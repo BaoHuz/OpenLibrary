@@ -5,7 +5,7 @@ import {
   BookOpen, Search, LogIn, BookMarked, Star, TrendingUp,
   LibraryBig, PenTool, LayoutDashboard, Quote, ChevronRight, Play,
   X, BookCopy, Users, Award, Clock, Heart, Eye, Filter,
-  MapPin, Phone, Mail, CheckCircle, Zap, Shield, Globe, Menu
+  MapPin, Phone, Mail, CheckCircle, Zap, Shield, Globe, Menu, Github, Linkedin, Twitter
 } from 'lucide-react';
 import './App.css';
 
@@ -91,6 +91,7 @@ const PublicPage = ({ user, onLogout }) => {
   const [liked, setLiked] = useState({});
   const [currentView, setCurrentView] = useState('home'); // 'home' | 'library' | 'about' | 'contact'
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [heroIndex, setHeroIndex] = useState(0);
   const searchRef = useRef(null);
   const navigate = useNavigate();
 
@@ -133,10 +134,19 @@ const PublicPage = ({ user, onLogout }) => {
   });
 
 
-  const handleBorrow = book => {
+  const handleBorrow = async book => {
     if (!user) { navigate('/login'); return; }
     if (book.stock <= 0) { alert('Rất tiếc! Sách đã hết. Hãy quay lại sau.'); return; }
-    alert(`✅ Đã ghi nhận yêu cầu mượn "${book.title}".\nVui lòng đến quầy thư viện xuất trình mã độc giả để nhận sách!`);
+    
+    try {
+      const res = await axios.post(`${API}/borrow_request/`, {
+        username: user.username,
+        book_id: book.book_id,
+      });
+      alert(`✅ ${res.data.message}\nMã phiếu: #${res.data.ticket_id}`);
+    } catch (err) {
+      alert(`❌ Lỗi: ${err.response?.data?.error || 'Không thể tạo yêu cầu mượn. Vui lòng thử lại.'}`);
+    }
   };
 
   const handleViewDetail = book => {
@@ -157,7 +167,17 @@ const PublicPage = ({ user, onLogout }) => {
     'linear-gradient(135deg,#ff9a44,#fc6076)',
   ];
 
-  const featured = books[0];
+  const topBooks = books.slice(0, 5);
+  const featured = topBooks[heroIndex] || books[0];
+
+  useEffect(() => {
+    if (currentView === 'home' && !searchTerm && topBooks.length > 0) {
+      const timer = setInterval(() => {
+        setHeroIndex(prev => (prev + 1) % topBooks.length);
+      }, 5000);
+      return () => clearInterval(timer);
+    }
+  }, [currentView, searchTerm, topBooks.length]);
 
   /* ── Light color tokens ── */
   const bg = '#f8fafc';
@@ -332,17 +352,60 @@ const PublicPage = ({ user, onLogout }) => {
             </div>
             <div style={{ display: 'flex', gap: '1.5rem', justifyContent: 'center', flexWrap: 'wrap' }}>
               {[
-                { name: 'Nguyễn Văn An', role: 'Backend Developer', avatar: 'A', color: 'linear-gradient(135deg,#6366f1,#8b5cf6)' },
-                { name: 'Trần Thị Bích', role: 'Frontend Developer', avatar: 'B', color: 'linear-gradient(135deg,#ec4899,#f43f5e)' },
-                { name: 'Lê Minh Cường', role: 'UI/UX Designer', avatar: 'C', color: 'linear-gradient(135deg,#10b981,#06b6d4)' },
-                { name: 'Phạm Thảo Dương', role: 'Database Admin', avatar: 'D', color: 'linear-gradient(135deg,#f59e0b,#ef4444)' },
+                { 
+                  name: 'Trần Đình Hiển', 
+                  role: 'Full Stack Developer', 
+                  avatar: 'H', 
+                  color: 'linear-gradient(135deg,#6366f1,#8b5cf6)',
+                  email: 'hien.tran@openlib.edu.vn',
+                  github: 'https://github.com/trandinhhien',
+                  linkedin: 'https://linkedin.com/in/trandinhhien'
+                },
+                { 
+                  name: 'Nguyễn Khánh Duy', 
+                  role: 'Backend Developer', 
+                  avatar: 'D', 
+                  color: 'linear-gradient(135deg,#ec4899,#f43f5e)',
+                  email: 'duy.nguyen@openlib.edu.vn',
+                  github: 'https://github.com/nguyenkhanhduy'
+                },
+                { 
+                  name: 'Nguyễn Hữu Bảo', 
+                  role: 'UI/UX Designer', 
+                  avatar: 'B', 
+                  color: 'linear-gradient(135deg,#10b981,#06b6d4)',
+                  email: 'bao.nguyen@openlib.edu.vn',
+                  twitter: 'https://twitter.com/nguyenhuubao'
+                },
               ].map((member, i) => (
-                <div key={i} style={{ background: surface, border: `1px solid ${border}`, borderRadius: '1.5rem', padding: '2rem 1.5rem', textAlign: 'center', width: '200px', boxShadow: '0 4px 16px rgba(0,0,0,0.05)', transition: 'transform .25s, box-shadow .25s' }} onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-6px)'; e.currentTarget.style.boxShadow = '0 12px 30px rgba(99,102,241,0.12)'; }} onMouseLeave={e => { e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,0.05)'; }}>
+                <div key={i} style={{ background: surface, border: `1px solid ${border}`, borderRadius: '1.5rem', padding: '2rem 1.5rem', textAlign: 'center', width: '220px', boxShadow: '0 4px 16px rgba(0,0,0,0.05)', transition: 'transform .25s, box-shadow .25s' }} onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-6px)'; e.currentTarget.style.boxShadow = '0 12px 30px rgba(99,102,241,0.12)'; }} onMouseLeave={e => { e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,0.05)'; }}>
                   <div style={{ width: '72px', height: '72px', borderRadius: '50%', background: member.color, margin: '0 auto 1.25rem', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.75rem', fontWeight: 900, color: '#fff', boxShadow: '0 8px 20px rgba(0,0,0,0.14)' }}>
                     {member.avatar}
                   </div>
                   <div style={{ fontWeight: 800, fontSize: '1rem', color: textPrim, marginBottom: '0.35rem' }}>{member.name}</div>
-                  <div style={{ fontSize: '0.8rem', color: accent, fontWeight: 700 }}>{member.role}</div>
+                  <div style={{ fontSize: '0.8rem', color: accent, fontWeight: 700, marginBottom: '1rem' }}>{member.role}</div>
+                  
+                  {/* Social Links */}
+                  <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center', gap: '0.75rem' }}>
+                    <a href={`mailto:${member.email}`} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '32px', height: '32px', borderRadius: '50%', background: '#f8fafc', color: '#64748b', transition: 'all .2s' }} onMouseEnter={e => { e.currentTarget.style.background = 'rgba(99,102,241,0.1)'; e.currentTarget.style.color = '#6366f1'; }} onMouseLeave={e => { e.currentTarget.style.background = '#f8fafc'; e.currentTarget.style.color = '#64748b'; }}>
+                      <Mail size={14} />
+                    </a>
+                    {member.github && (
+                      <a href={member.github} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '32px', height: '32px', borderRadius: '50%', background: '#f8fafc', color: '#64748b', transition: 'all .2s' }} onMouseEnter={e => { e.currentTarget.style.background = 'rgba(99,102,241,0.1)'; e.currentTarget.style.color = '#6366f1'; }} onMouseLeave={e => { e.currentTarget.style.background = '#f8fafc'; e.currentTarget.style.color = '#64748b'; }}>
+                        <Github size={14} />
+                      </a>
+                    )}
+                    {member.linkedin && (
+                      <a href={member.linkedin} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '32px', height: '32px', borderRadius: '50%', background: '#f8fafc', color: '#64748b', transition: 'all .2s' }} onMouseEnter={e => { e.currentTarget.style.background = 'rgba(99,102,241,0.1)'; e.currentTarget.style.color = '#6366f1'; }} onMouseLeave={e => { e.currentTarget.style.background = '#f8fafc'; e.currentTarget.style.color = '#64748b'; }}>
+                        <Linkedin size={14} />
+                      </a>
+                    )}
+                    {member.twitter && (
+                      <a href={member.twitter} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '32px', height: '32px', borderRadius: '50%', background: '#f8fafc', color: '#64748b', transition: 'all .2s' }} onMouseEnter={e => { e.currentTarget.style.background = 'rgba(99,102,241,0.1)'; e.currentTarget.style.color = '#6366f1'; }} onMouseLeave={e => { e.currentTarget.style.background = '#f8fafc'; e.currentTarget.style.color = '#64748b'; }}>
+                        <Twitter size={14} />
+                      </a>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>
@@ -489,10 +552,54 @@ const PublicPage = ({ user, onLogout }) => {
               </div>
             </div>
 
-            {/* Book cover 3D */}
-            <div style={{ flex: '0 0 auto', width: '280px' }}>
+            {/* Right Side Column */}
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3rem', flex: '0 0 auto' }}>
+              {/* Book cover 3D */}
               <div onClick={() => handleViewDetail(featured)} style={{ width: '280px', height: '390px', borderRadius: '1rem', overflow: 'hidden', boxShadow: '0 30px 60px rgba(99,102,241,0.25), 0 0 0 1px rgba(99,102,241,0.1)', cursor: 'pointer', transform: 'perspective(900px) rotateY(-12deg) rotateX(3deg)', transition: 'transform 0.5s' }} onMouseEnter={e => e.currentTarget.style.transform = 'perspective(900px) rotateY(0deg) rotateX(0deg) scale(1.04)'} onMouseLeave={e => e.currentTarget.style.transform = 'perspective(900px) rotateY(-12deg) rotateX(3deg)'}>
                 {featured.image ? <img src={featured.image} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt={featured.title} /> : <div style={{ height: '100%', background: 'linear-gradient(135deg,#e0e7ff,#f3e8ff)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><BookOpen size={64} color={accent} opacity={0.4} /></div>}
+              </div>
+
+              {/* MINIMALIST PROGRESS SLIDER */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginTop: '-1.5rem' }}>
+                <button 
+                  onClick={() => setHeroIndex(prev => prev === 0 ? topBooks.length - 1 : prev - 1)}
+                  style={{ background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer', padding: '0.4rem', display: 'flex', alignItems: 'center', borderRadius: '50%', transition: 'color 0.2s' }}
+                  onMouseEnter={e => e.currentTarget.style.color = '#6366f1'}
+                  onMouseLeave={e => e.currentTarget.style.color = '#94a3b8'}
+                >
+                  <ChevronRight size={22} style={{ transform: 'rotate(180deg)' }} />
+                </button>
+
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                  {topBooks.map((_, idx) => {
+                    const isActive = idx === heroIndex;
+                    return (
+                      <div 
+                        key={idx}
+                        onClick={() => setHeroIndex(idx)}
+                        style={{
+                          width: isActive ? '36px' : '10px',
+                          height: '8px',
+                          borderRadius: '50px',
+                          background: isActive ? '#6366f1' : 'rgba(99,102,241,0.2)',
+                          cursor: 'pointer',
+                          transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
+                        }}
+                        onMouseEnter={e => { if(!isActive) e.currentTarget.style.background = 'rgba(99,102,241,0.4)'; }}
+                        onMouseLeave={e => { if(!isActive) e.currentTarget.style.background = 'rgba(99,102,241,0.2)'; }}
+                      />
+                    );
+                  })}
+                </div>
+
+                <button 
+                  onClick={() => setHeroIndex(prev => (prev + 1) % topBooks.length)}
+                  style={{ background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer', padding: '0.4rem', display: 'flex', alignItems: 'center', borderRadius: '50%', transition: 'color 0.2s' }}
+                  onMouseEnter={e => e.currentTarget.style.color = '#6366f1'}
+                  onMouseLeave={e => e.currentTarget.style.color = '#94a3b8'}
+                >
+                  <ChevronRight size={22} />
+                </button>
               </div>
             </div>
           </div>
@@ -680,6 +787,9 @@ const PublicPage = ({ user, onLogout }) => {
         </section>
       )}
 
+      </div>
+      )}
+
       {/* ══════ FOOTER ══════ */}
       <footer style={{ background: '#1e293b', color: '#94a3b8', padding: '3rem 2rem 2rem' }}>
         <div className="container">
@@ -718,9 +828,6 @@ const PublicPage = ({ user, onLogout }) => {
           </div>
         </div>
       </footer>
-
-      </div>
-      )}
 
     </div>
   );

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  Library, LayoutDashboard, BookOpen, Users, Tag, ClipboardList, Settings, LogOut, Bell, User, ChevronDown, Mail, Globe, MapPin, Palette, Building, Star, AlertTriangle, Inbox
+  Library, LayoutDashboard, BookOpen, Users, Tag, ClipboardList, Settings, LogOut, Bell, User, ChevronDown, Mail, Globe, MapPin, Palette, Building, Star, AlertTriangle, Inbox, Home
 } from 'lucide-react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import axios from 'axios';
@@ -52,7 +52,8 @@ const Layout = ({ children, user, onLogout }) => {
     { key: 'fines', label: 'Phạt vi phạm', icon: AlertTriangle, path: '/admin/fines' }
   ];
 
-  const activeTabObj = tabs.find(t => location.pathname === t.path || (t.path !== '/admin' && location.pathname.startsWith(t.path)));
+  // Sắp xếp lại để ưu tiên khớp URL dài nhất (chính xác nhất) nếu dùng startsWith
+  const activeTabObj = [...tabs].reverse().find(t => location.pathname === t.path || (t.path !== '/admin' && location.pathname.startsWith(t.path + '/')));
   const activeLabel = activeTabObj ? activeTabObj.label : 'Quản lý';
 
   return (
@@ -69,7 +70,7 @@ const Layout = ({ children, user, onLogout }) => {
         <nav className="nav-menu">
            {tabs.map((tab) => {
              const Icon = tab.icon;
-             const isActive = location.pathname === tab.path || (tab.path !== '/admin' && location.pathname.startsWith(tab.path));
+             const isActive = location.pathname === tab.path || (tab.path !== '/admin' && location.pathname.startsWith(tab.path + '/'));
              return (
                <Link 
                  to={tab.path}
@@ -124,6 +125,9 @@ const Layout = ({ children, user, onLogout }) => {
            </div>
 
            <div className="top-right-nav">
+              <div className="nav-icon-btn" onClick={() => navigate('/')} title="Quay lại trang chủ">
+                 <Home size={18} />
+              </div>
               <div className="nav-icon-btn" onClick={toggleTheme} title="Đổi giao diện">
                  <Palette size={18} />
               </div>
