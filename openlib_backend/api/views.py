@@ -6,12 +6,12 @@ from django.contrib.auth.hashers import check_password, make_password
 from django.conf import settings
 from django.utils import timezone
 import os, uuid
-from .models import Books, Authors, Categories, Users, BorrowTickets, Publishers, Reviews, Fines
+from .models import Books, Authors, Categories, Users, BorrowTickets, BorrowTicketDetails, Publishers, Reviews, Fines
 from .serializers import (
-    BookSerializer, 
-    AuthorSerializer, 
-    CategorySerializer, 
-    UserSerializer, 
+    BookSerializer,
+    AuthorSerializer,
+    CategorySerializer,
+    UserSerializer,
     BorrowTicketSerializer,
     PublisherSerializer,
     ReviewSerializer,
@@ -23,88 +23,61 @@ class UploadImageAPIView(APIView):
         image = request.FILES.get('image')
         if not image:
             return Response({'error': 'Không có file ảnh!'}, status=status.HTTP_400_BAD_REQUEST)
-        
-        # Tạo thư mục nếu chưa có
         upload_dir = os.path.join(settings.MEDIA_ROOT, 'books_images')
         os.makedirs(upload_dir, exist_ok=True)
-        
-        # Tạo tên file unique để tránh trùng
         ext = os.path.splitext(image.name)[1]
         filename = f"{uuid.uuid4().hex}{ext}"
         filepath = os.path.join(upload_dir, filename)
-        
-        # Lưu file
         with open(filepath, 'wb+') as f:
             for chunk in image.chunks():
                 f.write(chunk)
-        
-        # Trả về URL truy cập được
         url = f"http://127.0.0.1:8000{settings.MEDIA_URL}books_images/{filename}"
         return Response({'url': url}, status=status.HTTP_201_CREATED)
 
-# API Quản lý Sách
+# ─── LIST / CREATE ───────────────────────────────────────────
 class BookListAPIView(generics.ListCreateAPIView):
     queryset = Books.objects.all()
     serializer_class = BookSerializer
 
-# API Quản lý Tác giả
 class AuthorListAPIView(generics.ListCreateAPIView):
     queryset = Authors.objects.all()
     serializer_class = AuthorSerializer
 
-# API Quản lý Thể loại
 class CategoryListAPIView(generics.ListCreateAPIView):
     queryset = Categories.objects.all()
     serializer_class = CategorySerializer
 
-# API Quản lý Thành viên
 class UserListAPIView(generics.ListCreateAPIView):
     queryset = Users.objects.all()
     serializer_class = UserSerializer
 
-# API Quản lý Mượn / Trả
 class BorrowTicketListAPIView(generics.ListCreateAPIView):
     queryset = BorrowTickets.objects.all()
     serializer_class = BorrowTicketSerializer
 
-# API Quản lý Nhà xuất bản
 class PublisherListAPIView(generics.ListCreateAPIView):
     queryset = Publishers.objects.all()
     serializer_class = PublisherSerializer
 
-# API Quản lý Đánh giá
 class ReviewListAPIView(generics.ListCreateAPIView):
     queryset = Reviews.objects.all()
     serializer_class = ReviewSerializer
 
-# API Quản lý Phạt
 class FineListAPIView(generics.ListCreateAPIView):
     queryset = Fines.objects.all()
     serializer_class = FineSerializer
 
-# --- API ĐĂNG NHẬP / ĐĂNG KÝ ---
-
+# ─── AUTH ────────────────────────────────────────────────────
 class LoginAPIView(APIView):
     def post(self, request):
         username = request.data.get('username')
         password = request.data.get('password')
-
         try:
-            # Tìm user từ database (table custom)
             user = Users.objects.get(username=username)
-            
-            # Kiểm tra password (giả sử user đang dùng hash của Django)
-            # Nếu user đang dùng plaintext, đổi thành 'if user.password_hash == password:'
             if check_password(password, user.password_hash) or user.password_hash == password:
-                # Tạo Token (Vì simplejwt cần object User thật của Django, 
-                # ta có thể fix cứng hoặc mock. Nếu table Users không link với Auth User 
-                # thì ta tự tạo token bằng tay)
-                
-                # Để đơn giản và nhanh nhất cho demo, ta trả về thông tin user
-                # Trong thực tế, bạn nên dùng JWT thực thụ link với Auth User
                 return Response({
                     'message': 'Đăng nhập thành công!',
-                    'access': 'fake-jwt-token-for-demo', # Bạn có thể thay bằng JWT thực nếu cấu hình AUTH_USER_MODEL
+                    'access': 'fake-jwt-token-for-demo',
                     'user': {
                         'username': user.username,
                         'full_name': user.full_name,
@@ -121,17 +94,13 @@ class RegisterAPIView(APIView):
         data = request.data
         username = data.get('username', '').strip()
         password = data.get('password', '').strip()
-        
         if not username or not password:
             return Response({'error': 'Tên đăng nhập và mật khẩu không được để trống!'}, status=status.HTTP_400_BAD_REQUEST)
-        
         if Users.objects.filter(username=username).exists():
             return Response({'error': 'Tên đăng nhập đã tồn tại! Hãy chọn tên khác.'}, status=status.HTTP_400_BAD_REQUEST)
-        
         email = data.get('email', '').strip() or None
         if email and Users.objects.filter(email=email).exists():
             return Response({'error': 'Email này đã được sử dụng!'}, status=status.HTTP_400_BAD_REQUEST)
-        
         try:
             from django.db import IntegrityError
             Users.objects.create(
@@ -143,13 +112,12 @@ class RegisterAPIView(APIView):
                 is_active=True
             )
             return Response({'message': 'Đăng ký thành công!'}, status=status.HTTP_201_CREATED)
-        except IntegrityError as e:
+        except IntegrityError:
             return Response({'error': 'Dữ liệu bị trùng. Hãy kiểm tra lại tên đăng nhập hoặc email.'}, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
             return Response({'error': f'Lỗi server: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-# --- API CHI TIẾT (UPDATE / DELETE) ---
-
+# ─── DETAIL / UPDATE / DELETE ────────────────────────────────
 class BookDetailAPIView(generics.RetrieveUpdateDestroyAPIView):
     queryset = Books.objects.all()
     serializer_class = BookSerializer
@@ -189,37 +157,83 @@ class FineDetailAPIView(generics.RetrieveUpdateDestroyAPIView):
     queryset = Fines.objects.all()
     serializer_class = FineSerializer
     lookup_field = 'fine_id'
+
 # ─────────────────────────────────────────────────────────────
-# BORROW REQUEST: Người dùng gửi yêu cầu mượn sách (status='pending')
+# BORROW REQUEST — Yêu cầu mượn sách
+# GET  /api/borrow_request/?status=pending|active|rejected|returned|completed|overdue|all
+# POST /api/borrow_request/  → tạo yêu cầu mới
 # ─────────────────────────────────────────────────────────────
+
+# PostgreSQL ENUM values: 'Active', 'Completed', 'Overdue', 'Pending', 'Rejected', 'Returned'
+# Mapping frontend tab keys → exact DB ENUM values
+STATUS_MAP = {
+    'pending':  ['Pending'],
+    'active':   ['Active'],
+    'rejected': ['Rejected'],
+    'returned': ['Returned', 'Completed'],
+    'overdue':  ['Overdue'],
+}
+
+def _build_ticket_data(t):
+    """Serialize một BorrowTicket thành dict cho API response."""
+    books_data = []
+    try:
+        for d in t.borrowticketdetails_set.all():
+            try:
+                books_data.append({
+                    'book_id': d.book_id,
+                    'title': d.book.title if d.book else '—',
+                    'due_date': str(d.due_date),
+                    'return_date': str(d.return_date) if d.return_date else None,
+                    'is_returned': d.is_returned,
+                })
+            except Exception:
+                continue
+    except Exception:
+        pass
+    return {
+        'ticket_id': t.ticket_id,
+        'member_id': t.member_id,
+        'member_name': t.member.full_name if t.member else '—',
+        'member_username': t.member.username if t.member else '—',
+        'librarian_name': t.librarian.full_name if t.librarian else None,
+        'borrow_date': str(t.borrow_date),
+        'status': t.status,
+        'books': books_data,
+    }
+
+
 class BorrowRequestAPIView(APIView):
+
     def get(self, request):
-        """Admin lấy danh sách yêu cầu pending"""
-        tickets = BorrowTickets.objects.filter(status='pending').order_by('-ticket_id')
-        data = []
-        for t in tickets:
-            data.append({
-                'ticket_id': t.ticket_id,
-                'member_id': t.member_id,
-                'member_name': t.member.full_name if t.member else '—',
-                'member_username': t.member.username if t.member else '—',
-                'borrow_date': str(t.borrow_date),
-                'status': t.status,
-                'books': [
-                    {
-                        'book_id': d.book_id,
-                        'title': d.book.title if d.book else '—',
-                        'due_date': str(d.due_date),
-                    }
-                    for d in t.borrowticketdetails_set.all()
-                ]
-            })
-        return Response(data)
+        """Admin lấy danh sách yêu cầu theo status."""
+        status_filter = request.GET.get('status', 'pending')
+        try:
+            if status_filter == 'all':
+                tickets = BorrowTickets.objects.all().order_by('-ticket_id')
+            elif status_filter in STATUS_MAP:
+                tickets = BorrowTickets.objects.filter(
+                    status__in=STATUS_MAP[status_filter]
+                ).order_by('-ticket_id')
+            else:
+                tickets = BorrowTickets.objects.filter(
+                    status__iexact=status_filter
+                ).order_by('-ticket_id')
+
+            data = []
+            for t in tickets:
+                try:
+                    data.append(_build_ticket_data(t))
+                except Exception:
+                    continue
+            return Response(data)
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def post(self, request):
-        """Người dùng gửi yêu cầu mượn"""
+        """Người dùng gửi yêu cầu mượn sách."""
         username = request.data.get('username')
-        book_id = request.data.get('book_id')
+        book_id  = request.data.get('book_id')
         if not username or not book_id:
             return Response({'error': 'Thiếu thông tin username hoặc book_id'}, status=status.HTTP_400_BAD_REQUEST)
         try:
@@ -233,7 +247,7 @@ class BorrowRequestAPIView(APIView):
         if book.stock is not None and book.stock <= 0:
             return Response({'error': 'Sách đã hết, không thể tạo yêu cầu mượn'}, status=status.HTTP_400_BAD_REQUEST)
         # Kiểm tra duplicate pending request
-        existing = BorrowTickets.objects.filter(member=member, status='pending')
+        existing = BorrowTickets.objects.filter(member=member, status='Pending')
         for ex in existing:
             if ex.borrowticketdetails_set.filter(book=book).exists():
                 return Response({'error': 'Bạn đã có yêu cầu mượn sách này đang chờ duyệt'}, status=status.HTTP_400_BAD_REQUEST)
@@ -242,7 +256,7 @@ class BorrowRequestAPIView(APIView):
             member=member,
             librarian=None,
             borrow_date=date.today(),
-            status='pending'
+            status='Pending'
         )
         due = date.today() + timedelta(days=14)
         BorrowTicketDetails.objects.create(ticket=ticket, book=book, due_date=due, is_returned=False)
@@ -253,33 +267,48 @@ class BorrowRequestAPIView(APIView):
         }, status=status.HTTP_201_CREATED)
 
 
+# ─────────────────────────────────────────────────────────────
+# BORROW APPROVE — Admin duyệt hoặc từ chối yêu cầu
+# PATCH /api/borrow_request/<ticket_id>/approve/
+# ─────────────────────────────────────────────────────────────
 class BorrowApproveAPIView(APIView):
-    """Admin duyệt hoặc từ chối yêu cầu mượn"""
+    """Admin duyệt hoặc từ chối yêu cầu mượn."""
     def patch(self, request, ticket_id):
         action = request.data.get('action')  # 'approve' or 'reject'
         librarian_username = request.data.get('librarian_username', '')
         if action not in ('approve', 'reject'):
             return Response({'error': 'action phải là approve hoặc reject'}, status=status.HTTP_400_BAD_REQUEST)
         try:
-            ticket = BorrowTickets.objects.get(ticket_id=ticket_id, status='pending')
-        except BorrowTickets.DoesNotExist:
-            return Response({'error': 'Không tìm thấy yêu cầu hoặc đã xử lý'}, status=status.HTTP_404_NOT_FOUND)
+            # Tìm ticket đang ở trạng thái pending (bao gồm các variant chữ hoa/thường)
+            ticket = BorrowTickets.objects.filter(
+                ticket_id=ticket_id,
+                status='Pending'
+            ).first()
+            if not ticket:
+                return Response({'error': 'Không tìm thấy yêu cầu hoặc đã được xử lý'}, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
         librarian = None
         if librarian_username:
             try:
                 librarian = Users.objects.get(username=librarian_username)
             except Users.DoesNotExist:
                 pass
+
         if action == 'approve':
-            ticket.status = 'active'
+            ticket.status = 'Active'
             ticket.librarian = librarian
             ticket.save()
             for detail in ticket.borrowticketdetails_set.all():
-                if detail.book and detail.book.stock and detail.book.stock > 0:
-                    detail.book.stock -= 1
-                    detail.book.save()
+                try:
+                    if detail.book and detail.book.stock and detail.book.stock > 0:
+                        detail.book.stock -= 1
+                        detail.book.save()
+                except Exception:
+                    continue
             return Response({'message': 'Yêu cầu đã được DUYỆT ✓', 'ticket_id': ticket_id, 'status': 'active'})
         else:
-            ticket.status = 'rejected'
+            ticket.status = 'Rejected'
             ticket.save()
             return Response({'message': 'Yêu cầu đã bị TỪ CHỐI ✗', 'ticket_id': ticket_id, 'status': 'rejected'})

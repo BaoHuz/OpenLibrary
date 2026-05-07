@@ -1,1 +1,1675 @@
-[{"model": "api.authors", "pk": 1, "fields": {"name": "William S. Vincent", "bio": "Chuyên gia về Python và Django Framework."}}, {"model": "api.authors", "pk": 2, "fields": {"name": "Paul Bolstad", "bio": "Giáo sư chuyên ngành hệ thống thông tin địa lý (GIS)."}}, {"model": "api.authors", "pk": 3, "fields": {"name": "Luciano Ramalho", "bio": "Tác giả nổi tiếng với các cuốn sách về lập trình Python nâng cao."}}, {"model": "api.authors", "pk": 4, "fields": {"name": "Regina Obe", "bio": "Chuyên gia cơ sở dữ liệu, đặc biệt là PostgreSQL và PostGIS."}}, {"model": "api.authors", "pk": 5, "fields": {"name": "Haruki Murakami", "bio": "Tiểu thuyết gia người Nhật Bản, cha đẻ của 'Rừng Nauy'."}}, {"model": "api.authors", "pk": 6, "fields": {"name": "Robert Kiyosaki", "bio": "Doanh nhân, nhà đầu tư, tác giả cuốn Dạy Con Làm Giàu."}}, {"model": "api.authors", "pk": 7, "fields": {"name": "Dale Carnegie", "bio": "Người viết ra Đắc Nhân Tâm - một trong những sách bán chạy nhất mọi thời đại."}}, {"model": "api.authors", "pk": 8, "fields": {"name": "Nguyễn Nhật Ánh", "bio": "Nhà văn Việt Nam nổi tiếng với các tác phẩm viết về tuổi thơ."}}, {"model": "api.authors", "pk": 9, "fields": {"name": "Yuval Noah Harari", "bio": "Sử gia, giáo sư đại học và tác giả của Sapiens."}}, {"model": "api.books", "pk": 1, "fields": {"isbn": "9781098113551", "title": "Django for Beginners: Build websites with Python and Django", "category": 1, "author": 1, "publisher": 1, "publication_year": 2023, "stock": 9, "created_at": "2026-03-23T09:10:49.768", "image": "http://127.0.0.1:8000/media/books_images/70c6a762911f4753a2b9880f4f2c3ce8.jpg"}}, {"model": "api.books", "pk": 2, "fields": {"isbn": "9780971764736", "title": "GIS Fundamentals: A First Text on Geographic Information Systems", "category": 2, "author": 2, "publisher": 3, "publication_year": 2019, "stock": 4, "created_at": "2026-03-23T09:10:49.768", "image": "http://127.0.0.1:8000/media/books_images/25315168bfdc48a695188e1bb57ce8a2.jpg"}}, {"model": "api.books", "pk": 3, "fields": {"isbn": "9781491946008", "title": "Fluent Python: Clear, Concise, and Effective Programming", "category": 1, "author": 3, "publisher": 1, "publication_year": 2015, "stock": 8, "created_at": "2026-03-23T09:10:49.768", "image": "http://127.0.0.1:8000/media/books_images/9d4e8f95d4654345b1d1265b08221cc0.jpg"}}, {"model": "api.books", "pk": 4, "fields": {"isbn": "9781617293290", "title": "PostgreSQL: Up and Running", "category": 3, "author": 4, "publisher": 1, "publication_year": 2015, "stock": 11, "created_at": "2026-03-23T09:10:49.768", "image": "http://127.0.0.1:8000/media/books_images/ef89df089fd446dbab9596f8ff62379a.jpg"}}, {"model": "api.books", "pk": 5, "fields": {"isbn": "9781788293183", "title": "Mastering QGIS - Second Edition", "category": 2, "author": 2, "publisher": 2, "publication_year": 2016, "stock": 4, "created_at": "2026-03-23T09:10:49.768", "image": "http://127.0.0.1:8000/media/books_images/ab5ed3a19c6e4c02aea46a811ebf19db.jpg"}}, {"model": "api.books", "pk": 7, "fields": {"isbn": "978-vn-010", "title": "Rừng Na Uy - Tái Bản Đặc Biệt 2026", "category": 5, "author": 5, "publisher": 4, "publication_year": 2026, "stock": 5, "created_at": null, "image": "http://127.0.0.1:8000/media/books_images/3f9522107f6848ba9e8e44ade7062de0.jpg"}}, {"model": "api.books", "pk": 8, "fields": {"isbn": "978-vn-011", "title": "Dạy Con Làm Giàu - Tập 1", "category": 10, "author": 6, "publisher": 7, "publication_year": 1997, "stock": 10, "created_at": null, "image": "http://127.0.0.1:8000/media/books_images/2775f9b4b8a644b4bbe91250553f6075.jpg"}}, {"model": "api.books", "pk": 9, "fields": {"isbn": "978-vn-012", "title": "Sapiens: Lược Sử Loài Người", "category": 9, "author": 9, "publisher": 6, "publication_year": 2017, "stock": 3, "created_at": null, "image": "http://127.0.0.1:8000/media/books_images/426c2ed114284dbf9c0beac3627c7609.jpg"}}, {"model": "api.books", "pk": 10, "fields": {"isbn": "978-vn-013", "title": "Đắc Nhân Tâm", "category": 6, "author": 7, "publisher": 4, "publication_year": 2023, "stock": 0, "created_at": null, "image": "http://127.0.0.1:8000/media/books_images/cbbfede236b54cfa9298255d72d4c98d.jpg"}}, {"model": "api.books", "pk": 11, "fields": {"isbn": "978-vn-014", "title": "Mắt Biếc (Bản Nâng Cấp)", "category": 5, "author": 8, "publisher": 5, "publication_year": 2019, "stock": 15, "created_at": null, "image": "http://127.0.0.1:8000/media/books_images/c5f3db06e6af444a9eb1ea9cfac94afb.jpg"}}, {"model": "api.books", "pk": 12, "fields": {"isbn": "978-vn-015", "title": "Clean Code: Cẩm nang Lập trình", "category": 7, "author": 5, "publisher": 7, "publication_year": 2022, "stock": 2, "created_at": null, "image": "http://127.0.0.1:8000/media/books_images/48b7ce7ed9464032b52097b6df6c9e7e.jpg"}}, {"model": "api.books", "pk": 13, "fields": {"isbn": "978-vn-016", "title": "Tâm Lý Học Tội Phạm", "category": 8, "author": 7, "publisher": 6, "publication_year": 2021, "stock": 7, "created_at": null, "image": "http://127.0.0.1:8000/media/books_images/ba7c70b475c84e19ba0258ebceff405b.jpg"}}, {"model": "api.books", "pk": 14, "fields": {"isbn": "978-vn-017", "title": "Hành Trình Về Phương Đông", "category": 8, "author": 9, "publisher": 4, "publication_year": 2022, "stock": 12, "created_at": null, "image": "http://127.0.0.1:8000/media/books_images/5a602ff92a434107af4342ba2957d74f.jpg"}}, {"model": "api.borrowticketdetails", "pk": [1, 1], "fields": {"ticket": 1, "book": 1, "due_date": "2026-04-06", "return_date": null, "is_returned": false}}, {"model": "api.borrowticketdetails", "pk": [1, 4], "fields": {"ticket": 1, "book": 4, "due_date": "2026-04-06", "return_date": null, "is_returned": false}}, {"model": "api.borrowticketdetails", "pk": [2, 2], "fields": {"ticket": 2, "book": 2, "due_date": "2026-04-01", "return_date": null, "is_returned": false}}, {"model": "api.borrowtickets", "pk": 1, "fields": {"member": 3, "librarian": 2, "borrow_date": "2026-03-23", "status": "Active"}}, {"model": "api.borrowtickets", "pk": 2, "fields": {"member": 4, "librarian": 2, "borrow_date": "2026-03-18", "status": "Active"}}, {"model": "api.categories", "pk": 1, "fields": {"name": "Web Development", "description": "Sách về thiết kế, phát triển và tối ưu hóa ứng dụng web (SEO, CMS, Frameworks)."}}, {"model": "api.categories", "pk": 2, "fields": {"name": "Geographic Information Systems (GIS)", "description": "Tài liệu về hệ thống thông tin địa lý, ArcMap, QGIS, Remote Sensing."}}, {"model": "api.categories", "pk": 3, "fields": {"name": "Database Management", "description": "Quản trị cơ sở dữ liệu, thiết kế ERD, SQL Server, PostgreSQL."}}, {"model": "api.categories", "pk": 4, "fields": {"name": "Artificial Intelligence", "description": "Sách về Machine Learning, thuật toán AI, Decision Trees."}}, {"model": "api.categories", "pk": 5, "fields": {"name": "Văn Học Nước Ngoài", "description": "Chuyên mục Văn Học Nước Ngoài mang đến nhiều kiến thức bổ ích."}}, {"model": "api.categories", "pk": 6, "fields": {"name": "Kỹ Năng Sống", "description": "Chuyên mục Kỹ Năng Sống mang đến nhiều kiến thức bổ ích."}}, {"model": "api.categories", "pk": 7, "fields": {"name": "Công Nghệ - Lập Trình", "description": "Chuyên mục Công Nghệ - Lập Trình mang đến nhiều kiến thức bổ ích."}}, {"model": "api.categories", "pk": 8, "fields": {"name": "Tâm Lý - Hành Vi", "description": "Chuyên mục Tâm Lý - Hành Vi mang đến nhiều kiến thức bổ ích."}}, {"model": "api.categories", "pk": 9, "fields": {"name": "Lịch Sử Nhân Loại", "description": "Chuyên mục Lịch Sử Nhân Loại mang đến nhiều kiến thức bổ ích."}}, {"model": "api.categories", "pk": 10, "fields": {"name": "Kinh Tế - Khởi Nghiệp", "description": "Chuyên mục Kinh Tế - Khởi Nghiệp mang đến nhiều kiến thức bổ ích."}}, {"model": "api.publishers", "pk": 1, "fields": {"name": "O'Reilly Media", "address": "1005 Gravenstein Highway North, Sebastopol, CA", "contact_email": "contact@oreilly.com"}}, {"model": "api.publishers", "pk": 2, "fields": {"name": "Packt Publishing", "address": "Birmingham, UK", "contact_email": "info@packtpub.com"}}, {"model": "api.publishers", "pk": 3, "fields": {"name": "NXB Đại học Quốc gia", "address": "TP. Hồ Chí Minh, Việt Nam", "contact_email": "nxbdhqg@vnuhcm.edu.vn"}}, {"model": "api.publishers", "pk": 4, "fields": {"name": "NXB Trẻ", "address": null, "contact_email": null}}, {"model": "api.publishers", "pk": 5, "fields": {"name": "NXB Kim Đồng", "address": null, "contact_email": null}}, {"model": "api.publishers", "pk": 6, "fields": {"name": "Nhã Nam", "address": null, "contact_email": null}}, {"model": "api.publishers", "pk": 7, "fields": {"name": "Alphabooks", "address": null, "contact_email": null}}, {"model": "api.users", "pk": 1, "fields": {"username": "admin_01", "password_hash": "pbkdf2_sha256$1200000$NN3XY2OtwyQpRJlRAtZ8kN$flnDr5WTdMuC3goeerRRZrwBBPyzJ65PKX8mN8KDfFI=", "full_name": "Nguyễn Văn Quản Trị", "email": "admin@openlib.com", "role": "Admin", "is_active": true, "created_at": "2026-03-23T09:10:21.265"}}, {"model": "api.users", "pk": 2, "fields": {"username": "lib_hcm", "password_hash": "pbkdf2_sha256$260000$libhash123", "full_name": "Trần Thị Thủ Thư", "email": "thuthu@openlib.com", "role": "Librarian", "is_active": true, "created_at": "2026-03-23T09:10:21.265"}}, {"model": "api.users", "pk": 3, "fields": {"username": "sv_001", "password_hash": "pbkdf2_sha256$1200000$z6vsGl9VQpo0EWVqVixYZw$q/hC1KQln9wqOVJ58g07GlbHpbDJfuX7TR/rtZAnoLE=", "full_name": "Lê Hoàng Sinh Viên", "email": "hoangsv@student.edu.vn", "role": "Member", "is_active": true, "created_at": "2026-03-23T09:10:21.265"}}, {"model": "api.users", "pk": 4, "fields": {"username": "sv_002", "password_hash": "pbkdf2_sha256$1200000$EqA1JC0LIgessIziQ8LCm4$3AVGv0jMikUSVFBA7cgh5luRHLAGolZflEp+m3aeFus=", "full_name": "Phạm Thị Lập Trình", "email": "phamsv@student.edu.vn", "role": "Member", "is_active": true, "created_at": "2026-03-23T09:10:21.265"}}, {"model": "api.users", "pk": 5, "fields": {"username": "test1", "password_hash": "pbkdf2_sha256$1200000$LJ4KJJVytLU7tAOLg9bFsT$EhGLTatppqtXQ35EYpzeJtde2SiIqw/rEYZiZqcAooo=", "full_name": "test", "email": "test1@gmail.com", "role": "Member", "is_active": true, "created_at": null}}, {"model": "api.reviews", "pk": 56, "fields": {"book": 5, "user": 4, "rating": 5, "comment": "Khuyên mọi sinh viên nên mượn đọc cuốn sách này trước khi ra trường để mở mang tầm mắt.", "created_at": "2026-04-10T17:00:43.520Z"}}, {"model": "api.reviews", "pk": 57, "fields": {"book": 5, "user": 2, "rating": 4, "comment": "Tôi đã tìm kiếm tri thức này rất lâu rồi, bộ phận quản lý thư viện làm rất tốt khi cập nhật quyển này.", "created_at": "2026-04-10T17:00:43.532Z"}}, {"model": "api.reviews", "pk": 58, "fields": {"book": 1, "user": 1, "rating": 5, "comment": "Cách viết cực kỳ lôi cuốn, tôi thức trắng đêm để đọc hết một mạch cuốn tiểu thuyết này.", "created_at": "2026-04-10T17:00:43.533Z"}}, {"model": "api.reviews", "pk": 59, "fields": {"book": 1, "user": 2, "rating": 5, "comment": "Quyển sách này thực sự thay đổi cuộc đời tôi! Phải mua ngay để trên kệ sách nhà mình.", "created_at": "2026-04-10T17:00:43.534Z"}}, {"model": "api.reviews", "pk": 60, "fields": {"book": 4, "user": 4, "rating": 4, "comment": "Cách viết cực kỳ lôi cuốn, tôi thức trắng đêm để đọc hết một mạch cuốn tiểu thuyết này.", "created_at": "2026-04-10T17:00:43.535Z"}}, {"model": "api.reviews", "pk": 61, "fields": {"book": 4, "user": 1, "rating": 5, "comment": "Cách viết cực kỳ lôi cuốn, tôi thức trắng đêm để đọc hết một mạch cuốn tiểu thuyết này.", "created_at": "2026-04-10T17:00:43.535Z"}}, {"model": "api.reviews", "pk": 62, "fields": {"book": 2, "user": 5, "rating": 5, "comment": "Tác phẩm mang hơi thở thời đại, sâu sắc và tinh tế. Tác giả đã vượt quá khuôn khổ thường thấy.", "created_at": "2026-04-10T17:00:43.536Z"}}, {"model": "api.reviews", "pk": 63, "fields": {"book": 2, "user": 3, "rating": 4, "comment": "Tác phẩm mang hơi thở thời đại, sâu sắc và tinh tế. Tác giả đã vượt quá khuôn khổ thường thấy.", "created_at": "2026-04-10T17:00:43.536Z"}}, {"model": "api.reviews", "pk": 64, "fields": {"book": 3, "user": 4, "rating": 5, "comment": "Khuyên mọi sinh viên nên mượn đọc cuốn sách này trước khi ra trường để mở mang tầm mắt.", "created_at": "2026-04-10T17:00:43.537Z"}}, {"model": "api.reviews", "pk": 65, "fields": {"book": 3, "user": 1, "rating": 5, "comment": "Khuyên mọi sinh viên nên mượn đọc cuốn sách này trước khi ra trường để mở mang tầm mắt.", "created_at": "2026-04-10T17:00:43.538Z"}}, {"model": "api.reviews", "pk": 66, "fields": {"book": 7, "user": 1, "rating": 5, "comment": "Cách viết cực kỳ lôi cuốn, tôi thức trắng đêm để đọc hết một mạch cuốn tiểu thuyết này.", "created_at": "2026-04-10T17:00:43.539Z"}}, {"model": "api.reviews", "pk": 67, "fields": {"book": 7, "user": 1, "rating": 4, "comment": "Quyển sách này thực sự thay đổi cuộc đời tôi! Phải mua ngay để trên kệ sách nhà mình.", "created_at": "2026-04-10T17:00:43.540Z"}}, {"model": "api.reviews", "pk": 68, "fields": {"book": 8, "user": 4, "rating": 5, "comment": "Khuyên mọi sinh viên nên mượn đọc cuốn sách này trước khi ra trường để mở mang tầm mắt.", "created_at": "2026-04-10T17:00:43.543Z"}}, {"model": "api.reviews", "pk": 69, "fields": {"book": 8, "user": 2, "rating": 5, "comment": "Tôi đã tìm kiếm tri thức này rất lâu rồi, bộ phận quản lý thư viện làm rất tốt khi cập nhật quyển này.", "created_at": "2026-04-10T17:00:43.545Z"}}, {"model": "api.reviews", "pk": 70, "fields": {"book": 9, "user": 3, "rating": 5, "comment": "Khuyên mọi sinh viên nên mượn đọc cuốn sách này trước khi ra trường để mở mang tầm mắt.", "created_at": "2026-04-10T17:00:43.545Z"}}, {"model": "api.reviews", "pk": 71, "fields": {"book": 9, "user": 5, "rating": 5, "comment": "Quyển sách này thực sự thay đổi cuộc đời tôi! Phải mua ngay để trên kệ sách nhà mình.", "created_at": "2026-04-10T17:00:43.546Z"}}, {"model": "api.reviews", "pk": 72, "fields": {"book": 10, "user": 1, "rating": 4, "comment": "Khuyên mọi sinh viên nên mượn đọc cuốn sách này trước khi ra trường để mở mang tầm mắt.", "created_at": "2026-04-10T17:00:43.546Z"}}, {"model": "api.reviews", "pk": 73, "fields": {"book": 10, "user": 2, "rating": 5, "comment": "Tác phẩm mang hơi thở thời đại, sâu sắc và tinh tế. Tác giả đã vượt quá khuôn khổ thường thấy.", "created_at": "2026-04-10T17:00:43.547Z"}}, {"model": "api.reviews", "pk": 74, "fields": {"book": 11, "user": 5, "rating": 5, "comment": "Cách viết cực kỳ lôi cuốn, tôi thức trắng đêm để đọc hết một mạch cuốn tiểu thuyết này.", "created_at": "2026-04-10T17:00:43.547Z"}}, {"model": "api.reviews", "pk": 75, "fields": {"book": 11, "user": 4, "rating": 4, "comment": "Tôi đã tìm kiếm tri thức này rất lâu rồi, bộ phận quản lý thư viện làm rất tốt khi cập nhật quyển này.", "created_at": "2026-04-10T17:00:43.548Z"}}, {"model": "api.reviews", "pk": 76, "fields": {"book": 12, "user": 5, "rating": 4, "comment": "Quyển sách này thực sự thay đổi cuộc đời tôi! Phải mua ngay để trên kệ sách nhà mình.", "created_at": "2026-04-10T17:00:43.548Z"}}, {"model": "api.reviews", "pk": 77, "fields": {"book": 12, "user": 1, "rating": 4, "comment": "Quyển sách này thực sự thay đổi cuộc đời tôi! Phải mua ngay để trên kệ sách nhà mình.", "created_at": "2026-04-10T17:00:43.548Z"}}, {"model": "api.reviews", "pk": 78, "fields": {"book": 13, "user": 2, "rating": 5, "comment": "Tôi đã tìm kiếm tri thức này rất lâu rồi, bộ phận quản lý thư viện làm rất tốt khi cập nhật quyển này.", "created_at": "2026-04-10T17:00:43.549Z"}}, {"model": "api.reviews", "pk": 79, "fields": {"book": 13, "user": 5, "rating": 5, "comment": "Tôi đã tìm kiếm tri thức này rất lâu rồi, bộ phận quản lý thư viện làm rất tốt khi cập nhật quyển này.", "created_at": "2026-04-10T17:00:43.550Z"}}, {"model": "api.reviews", "pk": 80, "fields": {"book": 14, "user": 2, "rating": 4, "comment": "Khuyên mọi sinh viên nên mượn đọc cuốn sách này trước khi ra trường để mở mang tầm mắt.", "created_at": "2026-04-10T17:00:43.551Z"}}, {"model": "api.reviews", "pk": 81, "fields": {"book": 14, "user": 4, "rating": 5, "comment": "Tác phẩm mang hơi thở thời đại, sâu sắc và tinh tế. Tác giả đã vượt quá khuôn khổ thường thấy.", "created_at": "2026-04-10T17:00:43.552Z"}}, {"model": "api.fines", "pk": 1, "fields": {"user": 2, "amount": "50000.00", "reason": "Làm rách trang sách 45", "is_paid": false, "created_at": "2026-04-10T16:08:16.976Z"}}, {"model": "api.fines", "pk": 2, "fields": {"user": 1, "amount": "10000.00", "reason": "Trả sách quá hạn 2 ngày", "is_paid": true, "created_at": "2026-04-10T16:08:16.978Z"}}, {"model": "api.fines", "pk": 3, "fields": {"user": 3, "amount": "150000.00", "reason": "Làm mất hoàn toàn cuốn tiểu thuyết", "is_paid": false, "created_at": "2026-04-10T16:08:16.978Z"}}]
+[
+{
+    "model": "auth.permission",
+    "pk": 1,
+    "fields": {
+        "name": "Can add log entry",
+        "content_type": 1,
+        "codename": "add_logentry"
+    }
+},
+{
+    "model": "auth.permission",
+    "pk": 2,
+    "fields": {
+        "name": "Can change log entry",
+        "content_type": 1,
+        "codename": "change_logentry"
+    }
+},
+{
+    "model": "auth.permission",
+    "pk": 3,
+    "fields": {
+        "name": "Can delete log entry",
+        "content_type": 1,
+        "codename": "delete_logentry"
+    }
+},
+{
+    "model": "auth.permission",
+    "pk": 4,
+    "fields": {
+        "name": "Can view log entry",
+        "content_type": 1,
+        "codename": "view_logentry"
+    }
+},
+{
+    "model": "auth.permission",
+    "pk": 5,
+    "fields": {
+        "name": "Can add permission",
+        "content_type": 3,
+        "codename": "add_permission"
+    }
+},
+{
+    "model": "auth.permission",
+    "pk": 6,
+    "fields": {
+        "name": "Can change permission",
+        "content_type": 3,
+        "codename": "change_permission"
+    }
+},
+{
+    "model": "auth.permission",
+    "pk": 7,
+    "fields": {
+        "name": "Can delete permission",
+        "content_type": 3,
+        "codename": "delete_permission"
+    }
+},
+{
+    "model": "auth.permission",
+    "pk": 8,
+    "fields": {
+        "name": "Can view permission",
+        "content_type": 3,
+        "codename": "view_permission"
+    }
+},
+{
+    "model": "auth.permission",
+    "pk": 9,
+    "fields": {
+        "name": "Can add group",
+        "content_type": 2,
+        "codename": "add_group"
+    }
+},
+{
+    "model": "auth.permission",
+    "pk": 10,
+    "fields": {
+        "name": "Can change group",
+        "content_type": 2,
+        "codename": "change_group"
+    }
+},
+{
+    "model": "auth.permission",
+    "pk": 11,
+    "fields": {
+        "name": "Can delete group",
+        "content_type": 2,
+        "codename": "delete_group"
+    }
+},
+{
+    "model": "auth.permission",
+    "pk": 12,
+    "fields": {
+        "name": "Can view group",
+        "content_type": 2,
+        "codename": "view_group"
+    }
+},
+{
+    "model": "auth.permission",
+    "pk": 13,
+    "fields": {
+        "name": "Can add user",
+        "content_type": 4,
+        "codename": "add_user"
+    }
+},
+{
+    "model": "auth.permission",
+    "pk": 14,
+    "fields": {
+        "name": "Can change user",
+        "content_type": 4,
+        "codename": "change_user"
+    }
+},
+{
+    "model": "auth.permission",
+    "pk": 15,
+    "fields": {
+        "name": "Can delete user",
+        "content_type": 4,
+        "codename": "delete_user"
+    }
+},
+{
+    "model": "auth.permission",
+    "pk": 16,
+    "fields": {
+        "name": "Can view user",
+        "content_type": 4,
+        "codename": "view_user"
+    }
+},
+{
+    "model": "auth.permission",
+    "pk": 17,
+    "fields": {
+        "name": "Can add content type",
+        "content_type": 5,
+        "codename": "add_contenttype"
+    }
+},
+{
+    "model": "auth.permission",
+    "pk": 18,
+    "fields": {
+        "name": "Can change content type",
+        "content_type": 5,
+        "codename": "change_contenttype"
+    }
+},
+{
+    "model": "auth.permission",
+    "pk": 19,
+    "fields": {
+        "name": "Can delete content type",
+        "content_type": 5,
+        "codename": "delete_contenttype"
+    }
+},
+{
+    "model": "auth.permission",
+    "pk": 20,
+    "fields": {
+        "name": "Can view content type",
+        "content_type": 5,
+        "codename": "view_contenttype"
+    }
+},
+{
+    "model": "auth.permission",
+    "pk": 21,
+    "fields": {
+        "name": "Can add session",
+        "content_type": 6,
+        "codename": "add_session"
+    }
+},
+{
+    "model": "auth.permission",
+    "pk": 22,
+    "fields": {
+        "name": "Can change session",
+        "content_type": 6,
+        "codename": "change_session"
+    }
+},
+{
+    "model": "auth.permission",
+    "pk": 23,
+    "fields": {
+        "name": "Can delete session",
+        "content_type": 6,
+        "codename": "delete_session"
+    }
+},
+{
+    "model": "auth.permission",
+    "pk": 24,
+    "fields": {
+        "name": "Can view session",
+        "content_type": 6,
+        "codename": "view_session"
+    }
+},
+{
+    "model": "auth.permission",
+    "pk": 25,
+    "fields": {
+        "name": "Can add borrow tickets",
+        "content_type": 10,
+        "codename": "add_borrowtickets"
+    }
+},
+{
+    "model": "auth.permission",
+    "pk": 26,
+    "fields": {
+        "name": "Can change borrow tickets",
+        "content_type": 10,
+        "codename": "change_borrowtickets"
+    }
+},
+{
+    "model": "auth.permission",
+    "pk": 27,
+    "fields": {
+        "name": "Can delete borrow tickets",
+        "content_type": 10,
+        "codename": "delete_borrowtickets"
+    }
+},
+{
+    "model": "auth.permission",
+    "pk": 28,
+    "fields": {
+        "name": "Can view borrow tickets",
+        "content_type": 10,
+        "codename": "view_borrowtickets"
+    }
+},
+{
+    "model": "auth.permission",
+    "pk": 29,
+    "fields": {
+        "name": "Can add users",
+        "content_type": 13,
+        "codename": "add_users"
+    }
+},
+{
+    "model": "auth.permission",
+    "pk": 30,
+    "fields": {
+        "name": "Can change users",
+        "content_type": 13,
+        "codename": "change_users"
+    }
+},
+{
+    "model": "auth.permission",
+    "pk": 31,
+    "fields": {
+        "name": "Can delete users",
+        "content_type": 13,
+        "codename": "delete_users"
+    }
+},
+{
+    "model": "auth.permission",
+    "pk": 32,
+    "fields": {
+        "name": "Can view users",
+        "content_type": 13,
+        "codename": "view_users"
+    }
+},
+{
+    "model": "auth.permission",
+    "pk": 33,
+    "fields": {
+        "name": "Can add books",
+        "content_type": 8,
+        "codename": "add_books"
+    }
+},
+{
+    "model": "auth.permission",
+    "pk": 34,
+    "fields": {
+        "name": "Can change books",
+        "content_type": 8,
+        "codename": "change_books"
+    }
+},
+{
+    "model": "auth.permission",
+    "pk": 35,
+    "fields": {
+        "name": "Can delete books",
+        "content_type": 8,
+        "codename": "delete_books"
+    }
+},
+{
+    "model": "auth.permission",
+    "pk": 36,
+    "fields": {
+        "name": "Can view books",
+        "content_type": 8,
+        "codename": "view_books"
+    }
+},
+{
+    "model": "auth.permission",
+    "pk": 37,
+    "fields": {
+        "name": "Can add categories",
+        "content_type": 11,
+        "codename": "add_categories"
+    }
+},
+{
+    "model": "auth.permission",
+    "pk": 38,
+    "fields": {
+        "name": "Can change categories",
+        "content_type": 11,
+        "codename": "change_categories"
+    }
+},
+{
+    "model": "auth.permission",
+    "pk": 39,
+    "fields": {
+        "name": "Can delete categories",
+        "content_type": 11,
+        "codename": "delete_categories"
+    }
+},
+{
+    "model": "auth.permission",
+    "pk": 40,
+    "fields": {
+        "name": "Can view categories",
+        "content_type": 11,
+        "codename": "view_categories"
+    }
+},
+{
+    "model": "auth.permission",
+    "pk": 41,
+    "fields": {
+        "name": "Can add borrow ticket details",
+        "content_type": 9,
+        "codename": "add_borrowticketdetails"
+    }
+},
+{
+    "model": "auth.permission",
+    "pk": 42,
+    "fields": {
+        "name": "Can change borrow ticket details",
+        "content_type": 9,
+        "codename": "change_borrowticketdetails"
+    }
+},
+{
+    "model": "auth.permission",
+    "pk": 43,
+    "fields": {
+        "name": "Can delete borrow ticket details",
+        "content_type": 9,
+        "codename": "delete_borrowticketdetails"
+    }
+},
+{
+    "model": "auth.permission",
+    "pk": 44,
+    "fields": {
+        "name": "Can view borrow ticket details",
+        "content_type": 9,
+        "codename": "view_borrowticketdetails"
+    }
+},
+{
+    "model": "auth.permission",
+    "pk": 45,
+    "fields": {
+        "name": "Can add publishers",
+        "content_type": 12,
+        "codename": "add_publishers"
+    }
+},
+{
+    "model": "auth.permission",
+    "pk": 46,
+    "fields": {
+        "name": "Can change publishers",
+        "content_type": 12,
+        "codename": "change_publishers"
+    }
+},
+{
+    "model": "auth.permission",
+    "pk": 47,
+    "fields": {
+        "name": "Can delete publishers",
+        "content_type": 12,
+        "codename": "delete_publishers"
+    }
+},
+{
+    "model": "auth.permission",
+    "pk": 48,
+    "fields": {
+        "name": "Can view publishers",
+        "content_type": 12,
+        "codename": "view_publishers"
+    }
+},
+{
+    "model": "auth.permission",
+    "pk": 49,
+    "fields": {
+        "name": "Can add authors",
+        "content_type": 7,
+        "codename": "add_authors"
+    }
+},
+{
+    "model": "auth.permission",
+    "pk": 50,
+    "fields": {
+        "name": "Can change authors",
+        "content_type": 7,
+        "codename": "change_authors"
+    }
+},
+{
+    "model": "auth.permission",
+    "pk": 51,
+    "fields": {
+        "name": "Can delete authors",
+        "content_type": 7,
+        "codename": "delete_authors"
+    }
+},
+{
+    "model": "auth.permission",
+    "pk": 52,
+    "fields": {
+        "name": "Can view authors",
+        "content_type": 7,
+        "codename": "view_authors"
+    }
+},
+{
+    "model": "auth.permission",
+    "pk": 53,
+    "fields": {
+        "name": "Can add fines",
+        "content_type": 14,
+        "codename": "add_fines"
+    }
+},
+{
+    "model": "auth.permission",
+    "pk": 54,
+    "fields": {
+        "name": "Can change fines",
+        "content_type": 14,
+        "codename": "change_fines"
+    }
+},
+{
+    "model": "auth.permission",
+    "pk": 55,
+    "fields": {
+        "name": "Can delete fines",
+        "content_type": 14,
+        "codename": "delete_fines"
+    }
+},
+{
+    "model": "auth.permission",
+    "pk": 56,
+    "fields": {
+        "name": "Can view fines",
+        "content_type": 14,
+        "codename": "view_fines"
+    }
+},
+{
+    "model": "auth.permission",
+    "pk": 57,
+    "fields": {
+        "name": "Can add reviews",
+        "content_type": 15,
+        "codename": "add_reviews"
+    }
+},
+{
+    "model": "auth.permission",
+    "pk": 58,
+    "fields": {
+        "name": "Can change reviews",
+        "content_type": 15,
+        "codename": "change_reviews"
+    }
+},
+{
+    "model": "auth.permission",
+    "pk": 59,
+    "fields": {
+        "name": "Can delete reviews",
+        "content_type": 15,
+        "codename": "delete_reviews"
+    }
+},
+{
+    "model": "auth.permission",
+    "pk": 60,
+    "fields": {
+        "name": "Can view reviews",
+        "content_type": 15,
+        "codename": "view_reviews"
+    }
+},
+{
+    "model": "contenttypes.contenttype",
+    "pk": 1,
+    "fields": {
+        "app_label": "admin",
+        "model": "logentry"
+    }
+},
+{
+    "model": "contenttypes.contenttype",
+    "pk": 2,
+    "fields": {
+        "app_label": "auth",
+        "model": "group"
+    }
+},
+{
+    "model": "contenttypes.contenttype",
+    "pk": 3,
+    "fields": {
+        "app_label": "auth",
+        "model": "permission"
+    }
+},
+{
+    "model": "contenttypes.contenttype",
+    "pk": 4,
+    "fields": {
+        "app_label": "auth",
+        "model": "user"
+    }
+},
+{
+    "model": "contenttypes.contenttype",
+    "pk": 5,
+    "fields": {
+        "app_label": "contenttypes",
+        "model": "contenttype"
+    }
+},
+{
+    "model": "contenttypes.contenttype",
+    "pk": 6,
+    "fields": {
+        "app_label": "sessions",
+        "model": "session"
+    }
+},
+{
+    "model": "contenttypes.contenttype",
+    "pk": 7,
+    "fields": {
+        "app_label": "api",
+        "model": "authors"
+    }
+},
+{
+    "model": "contenttypes.contenttype",
+    "pk": 8,
+    "fields": {
+        "app_label": "api",
+        "model": "books"
+    }
+},
+{
+    "model": "contenttypes.contenttype",
+    "pk": 9,
+    "fields": {
+        "app_label": "api",
+        "model": "borrowticketdetails"
+    }
+},
+{
+    "model": "contenttypes.contenttype",
+    "pk": 10,
+    "fields": {
+        "app_label": "api",
+        "model": "borrowtickets"
+    }
+},
+{
+    "model": "contenttypes.contenttype",
+    "pk": 11,
+    "fields": {
+        "app_label": "api",
+        "model": "categories"
+    }
+},
+{
+    "model": "contenttypes.contenttype",
+    "pk": 12,
+    "fields": {
+        "app_label": "api",
+        "model": "publishers"
+    }
+},
+{
+    "model": "contenttypes.contenttype",
+    "pk": 13,
+    "fields": {
+        "app_label": "api",
+        "model": "users"
+    }
+},
+{
+    "model": "contenttypes.contenttype",
+    "pk": 14,
+    "fields": {
+        "app_label": "api",
+        "model": "fines"
+    }
+},
+{
+    "model": "contenttypes.contenttype",
+    "pk": 15,
+    "fields": {
+        "app_label": "api",
+        "model": "reviews"
+    }
+},
+{
+    "model": "api.authors",
+    "pk": 1,
+    "fields": {
+        "name": "William S. Vincent",
+        "bio": "Chuyên gia về Python và Django Framework."
+    }
+},
+{
+    "model": "api.authors",
+    "pk": 2,
+    "fields": {
+        "name": "Paul Bolstad",
+        "bio": "Giáo sư chuyên ngành hệ thống thông tin địa lý (GIS)."
+    }
+},
+{
+    "model": "api.authors",
+    "pk": 3,
+    "fields": {
+        "name": "Luciano Ramalho",
+        "bio": "Tác giả nổi tiếng với các cuốn sách về lập trình Python nâng cao."
+    }
+},
+{
+    "model": "api.authors",
+    "pk": 4,
+    "fields": {
+        "name": "Regina Obe",
+        "bio": "Chuyên gia cơ sở dữ liệu, đặc biệt là PostgreSQL và PostGIS."
+    }
+},
+{
+    "model": "api.authors",
+    "pk": 5,
+    "fields": {
+        "name": "Haruki Murakami",
+        "bio": "Tiểu thuyết gia người Nhật Bản, cha đẻ của 'Rừng Nauy'."
+    }
+},
+{
+    "model": "api.authors",
+    "pk": 6,
+    "fields": {
+        "name": "Robert Kiyosaki",
+        "bio": "Doanh nhân, nhà đầu tư, tác giả cuốn Dạy Con Làm Giàu."
+    }
+},
+{
+    "model": "api.authors",
+    "pk": 7,
+    "fields": {
+        "name": "Dale Carnegie",
+        "bio": "Người viết ra Đắc Nhân Tâm - một trong những sách bán chạy nhất mọi thời đại."
+    }
+},
+{
+    "model": "api.authors",
+    "pk": 8,
+    "fields": {
+        "name": "Nguyễn Nhật Ánh",
+        "bio": "Nhà văn Việt Nam nổi tiếng với các tác phẩm viết về tuổi thơ."
+    }
+},
+{
+    "model": "api.authors",
+    "pk": 9,
+    "fields": {
+        "name": "Yuval Noah Harari",
+        "bio": "Sử gia, giáo sư đại học và tác giả của Sapiens."
+    }
+},
+{
+    "model": "api.books",
+    "pk": 1,
+    "fields": {
+        "isbn": "9781098113551",
+        "title": "Django for Beginners: Build websites with Python and Django",
+        "category": 1,
+        "author": 1,
+        "publisher": 1,
+        "publication_year": 2023,
+        "stock": 7,
+        "created_at": "2026-03-23T09:10:49.768",
+        "image": "http://127.0.0.1:8000/media/books_images/70c6a762911f4753a2b9880f4f2c3ce8.jpg"
+    }
+},
+{
+    "model": "api.books",
+    "pk": 2,
+    "fields": {
+        "isbn": "9780971764736",
+        "title": "GIS Fundamentals: A First Text on Geographic Information Systems",
+        "category": 2,
+        "author": 2,
+        "publisher": 3,
+        "publication_year": 2019,
+        "stock": 4,
+        "created_at": "2026-03-23T09:10:49.768",
+        "image": "http://127.0.0.1:8000/media/books_images/25315168bfdc48a695188e1bb57ce8a2.jpg"
+    }
+},
+{
+    "model": "api.books",
+    "pk": 3,
+    "fields": {
+        "isbn": "9781491946008",
+        "title": "Fluent Python: Clear, Concise, and Effective Programming",
+        "category": 1,
+        "author": 3,
+        "publisher": 1,
+        "publication_year": 2015,
+        "stock": 6,
+        "created_at": "2026-03-23T09:10:49.768",
+        "image": "http://127.0.0.1:8000/media/books_images/9d4e8f95d4654345b1d1265b08221cc0.jpg"
+    }
+},
+{
+    "model": "api.books",
+    "pk": 4,
+    "fields": {
+        "isbn": "9781617293290",
+        "title": "PostgreSQL: Up and Running",
+        "category": 3,
+        "author": 4,
+        "publisher": 1,
+        "publication_year": 2015,
+        "stock": 11,
+        "created_at": "2026-03-23T09:10:49.768",
+        "image": "http://127.0.0.1:8000/media/books_images/ef89df089fd446dbab9596f8ff62379a.jpg"
+    }
+},
+{
+    "model": "api.books",
+    "pk": 5,
+    "fields": {
+        "isbn": "9781788293183",
+        "title": "Mastering QGIS - Second Edition",
+        "category": 2,
+        "author": 2,
+        "publisher": 2,
+        "publication_year": 2016,
+        "stock": 4,
+        "created_at": "2026-03-23T09:10:49.768",
+        "image": "http://127.0.0.1:8000/media/books_images/ab5ed3a19c6e4c02aea46a811ebf19db.jpg"
+    }
+},
+{
+    "model": "api.books",
+    "pk": 7,
+    "fields": {
+        "isbn": "978-vn-010",
+        "title": "Rừng Na Uy - Tái Bản Đặc Biệt 2026",
+        "category": 5,
+        "author": 5,
+        "publisher": 4,
+        "publication_year": 2026,
+        "stock": 5,
+        "created_at": null,
+        "image": "http://127.0.0.1:8000/media/books_images/3f9522107f6848ba9e8e44ade7062de0.jpg"
+    }
+},
+{
+    "model": "api.books",
+    "pk": 8,
+    "fields": {
+        "isbn": "978-vn-011",
+        "title": "Dạy Con Làm Giàu - Tập 1",
+        "category": 10,
+        "author": 6,
+        "publisher": 7,
+        "publication_year": 1997,
+        "stock": 8,
+        "created_at": null,
+        "image": "http://127.0.0.1:8000/media/books_images/2775f9b4b8a644b4bbe91250553f6075.jpg"
+    }
+},
+{
+    "model": "api.books",
+    "pk": 9,
+    "fields": {
+        "isbn": "978-vn-012",
+        "title": "Sapiens: Lược Sử Loài Người",
+        "category": 9,
+        "author": 9,
+        "publisher": 6,
+        "publication_year": 2017,
+        "stock": 2,
+        "created_at": null,
+        "image": "http://127.0.0.1:8000/media/books_images/426c2ed114284dbf9c0beac3627c7609.jpg"
+    }
+},
+{
+    "model": "api.books",
+    "pk": 10,
+    "fields": {
+        "isbn": "978-vn-013",
+        "title": "Đắc Nhân Tâm",
+        "category": 6,
+        "author": 7,
+        "publisher": 4,
+        "publication_year": 2023,
+        "stock": 0,
+        "created_at": null,
+        "image": "http://127.0.0.1:8000/media/books_images/cbbfede236b54cfa9298255d72d4c98d.jpg"
+    }
+},
+{
+    "model": "api.books",
+    "pk": 11,
+    "fields": {
+        "isbn": "978-vn-014",
+        "title": "Mắt Biếc (Bản Nâng Cấp)",
+        "category": 5,
+        "author": 8,
+        "publisher": 5,
+        "publication_year": 2019,
+        "stock": 15,
+        "created_at": null,
+        "image": "http://127.0.0.1:8000/media/books_images/c5f3db06e6af444a9eb1ea9cfac94afb.jpg"
+    }
+},
+{
+    "model": "api.books",
+    "pk": 12,
+    "fields": {
+        "isbn": "978-vn-015",
+        "title": "Clean Code: Cẩm nang Lập trình",
+        "category": 7,
+        "author": 5,
+        "publisher": 7,
+        "publication_year": 2022,
+        "stock": 2,
+        "created_at": null,
+        "image": "http://127.0.0.1:8000/media/books_images/48b7ce7ed9464032b52097b6df6c9e7e.jpg"
+    }
+},
+{
+    "model": "api.books",
+    "pk": 13,
+    "fields": {
+        "isbn": "978-vn-016",
+        "title": "Tâm Lý Học Tội Phạm",
+        "category": 8,
+        "author": 7,
+        "publisher": 6,
+        "publication_year": 2021,
+        "stock": 6,
+        "created_at": null,
+        "image": "http://127.0.0.1:8000/media/books_images/ba7c70b475c84e19ba0258ebceff405b.jpg"
+    }
+},
+{
+    "model": "api.books",
+    "pk": 14,
+    "fields": {
+        "isbn": "978-vn-017",
+        "title": "Hành Trình Về Phương Đông",
+        "category": 8,
+        "author": 9,
+        "publisher": 4,
+        "publication_year": 2022,
+        "stock": 12,
+        "created_at": null,
+        "image": "http://127.0.0.1:8000/media/books_images/5a602ff92a434107af4342ba2957d74f.jpg"
+    }
+},
+{
+    "model": "api.borrowticketdetails",
+    "pk": [
+        1,
+        1
+    ],
+    "fields": {
+        "ticket": 1,
+        "book": 1,
+        "due_date": "2026-04-06",
+        "return_date": null,
+        "is_returned": false
+    }
+},
+{
+    "model": "api.borrowticketdetails",
+    "pk": [
+        1,
+        4
+    ],
+    "fields": {
+        "ticket": 1,
+        "book": 4,
+        "due_date": "2026-04-06",
+        "return_date": null,
+        "is_returned": false
+    }
+},
+{
+    "model": "api.borrowticketdetails",
+    "pk": [
+        2,
+        2
+    ],
+    "fields": {
+        "ticket": 2,
+        "book": 2,
+        "due_date": "2026-04-01",
+        "return_date": null,
+        "is_returned": false
+    }
+},
+{
+    "model": "api.borrowticketdetails",
+    "pk": [
+        3,
+        3
+    ],
+    "fields": {
+        "ticket": 3,
+        "book": 3,
+        "due_date": "2026-04-26",
+        "return_date": null,
+        "is_returned": false
+    }
+},
+{
+    "model": "api.borrowticketdetails",
+    "pk": [
+        4,
+        1
+    ],
+    "fields": {
+        "ticket": 4,
+        "book": 1,
+        "due_date": "2026-04-26",
+        "return_date": null,
+        "is_returned": false
+    }
+},
+{
+    "model": "api.borrowticketdetails",
+    "pk": [
+        5,
+        8
+    ],
+    "fields": {
+        "ticket": 5,
+        "book": 8,
+        "due_date": "2026-04-27",
+        "return_date": null,
+        "is_returned": false
+    }
+},
+{
+    "model": "api.borrowticketdetails",
+    "pk": [
+        6,
+        13
+    ],
+    "fields": {
+        "ticket": 6,
+        "book": 13,
+        "due_date": "2026-05-02",
+        "return_date": null,
+        "is_returned": false
+    }
+},
+{
+    "model": "api.borrowticketdetails",
+    "pk": [
+        7,
+        9
+    ],
+    "fields": {
+        "ticket": 7,
+        "book": 9,
+        "due_date": "2026-05-03",
+        "return_date": null,
+        "is_returned": false
+    }
+},
+{
+    "model": "api.borrowtickets",
+    "pk": 1,
+    "fields": {
+        "member": 3,
+        "librarian": 2,
+        "borrow_date": "2026-03-23",
+        "status": "Active"
+    }
+},
+{
+    "model": "api.borrowtickets",
+    "pk": 2,
+    "fields": {
+        "member": 4,
+        "librarian": 2,
+        "borrow_date": "2026-03-18",
+        "status": "Active"
+    }
+},
+{
+    "model": "api.borrowtickets",
+    "pk": 3,
+    "fields": {
+        "member": 1,
+        "librarian": 1,
+        "borrow_date": "2026-04-12",
+        "status": "Active"
+    }
+},
+{
+    "model": "api.borrowtickets",
+    "pk": 4,
+    "fields": {
+        "member": 3,
+        "librarian": 1,
+        "borrow_date": "2026-04-12",
+        "status": "Active"
+    }
+},
+{
+    "model": "api.borrowtickets",
+    "pk": 5,
+    "fields": {
+        "member": 5,
+        "librarian": 1,
+        "borrow_date": "2026-04-13",
+        "status": "Active"
+    }
+},
+{
+    "model": "api.borrowtickets",
+    "pk": 6,
+    "fields": {
+        "member": 1,
+        "librarian": null,
+        "borrow_date": "2026-04-18",
+        "status": "Rejected"
+    }
+},
+{
+    "model": "api.borrowtickets",
+    "pk": 7,
+    "fields": {
+        "member": 1,
+        "librarian": null,
+        "borrow_date": "2026-04-19",
+        "status": "Rejected"
+    }
+},
+{
+    "model": "api.categories",
+    "pk": 1,
+    "fields": {
+        "name": "Web Development",
+        "description": "Sách về thiết kế, phát triển và tối ưu hóa ứng dụng web (SEO, CMS, Frameworks)."
+    }
+},
+{
+    "model": "api.categories",
+    "pk": 2,
+    "fields": {
+        "name": "Geographic Information Systems (GIS)",
+        "description": "Tài liệu về hệ thống thông tin địa lý, ArcMap, QGIS, Remote Sensing."
+    }
+},
+{
+    "model": "api.categories",
+    "pk": 3,
+    "fields": {
+        "name": "Database Management",
+        "description": "Quản trị cơ sở dữ liệu, thiết kế ERD, SQL Server, PostgreSQL."
+    }
+},
+{
+    "model": "api.categories",
+    "pk": 4,
+    "fields": {
+        "name": "Artificial Intelligence",
+        "description": "Sách về Machine Learning, thuật toán AI, Decision Trees."
+    }
+},
+{
+    "model": "api.categories",
+    "pk": 5,
+    "fields": {
+        "name": "Văn Học Nước Ngoài",
+        "description": "Chuyên mục Văn Học Nước Ngoài mang đến nhiều kiến thức bổ ích."
+    }
+},
+{
+    "model": "api.categories",
+    "pk": 6,
+    "fields": {
+        "name": "Kỹ Năng Sống",
+        "description": "Chuyên mục Kỹ Năng Sống mang đến nhiều kiến thức bổ ích."
+    }
+},
+{
+    "model": "api.categories",
+    "pk": 7,
+    "fields": {
+        "name": "Công Nghệ - Lập Trình",
+        "description": "Chuyên mục Công Nghệ - Lập Trình mang đến nhiều kiến thức bổ ích."
+    }
+},
+{
+    "model": "api.categories",
+    "pk": 8,
+    "fields": {
+        "name": "Tâm Lý - Hành Vi",
+        "description": "Chuyên mục Tâm Lý - Hành Vi mang đến nhiều kiến thức bổ ích."
+    }
+},
+{
+    "model": "api.categories",
+    "pk": 9,
+    "fields": {
+        "name": "Lịch Sử Nhân Loại",
+        "description": "Chuyên mục Lịch Sử Nhân Loại mang đến nhiều kiến thức bổ ích."
+    }
+},
+{
+    "model": "api.categories",
+    "pk": 10,
+    "fields": {
+        "name": "Kinh Tế - Khởi Nghiệp",
+        "description": "Chuyên mục Kinh Tế - Khởi Nghiệp mang đến nhiều kiến thức bổ ích."
+    }
+},
+{
+    "model": "api.publishers",
+    "pk": 1,
+    "fields": {
+        "name": "O'Reilly Media",
+        "address": "1005 Gravenstein Highway North, Sebastopol, CA",
+        "contact_email": "contact@oreilly.com"
+    }
+},
+{
+    "model": "api.publishers",
+    "pk": 2,
+    "fields": {
+        "name": "Packt Publishing",
+        "address": "Birmingham, UK",
+        "contact_email": "info@packtpub.com"
+    }
+},
+{
+    "model": "api.publishers",
+    "pk": 3,
+    "fields": {
+        "name": "NXB Đại học Quốc gia",
+        "address": "TP. Hồ Chí Minh, Việt Nam",
+        "contact_email": "nxbdhqg@vnuhcm.edu.vn"
+    }
+},
+{
+    "model": "api.publishers",
+    "pk": 4,
+    "fields": {
+        "name": "NXB Trẻ",
+        "address": null,
+        "contact_email": null
+    }
+},
+{
+    "model": "api.publishers",
+    "pk": 5,
+    "fields": {
+        "name": "NXB Kim Đồng",
+        "address": null,
+        "contact_email": null
+    }
+},
+{
+    "model": "api.publishers",
+    "pk": 6,
+    "fields": {
+        "name": "Nhã Nam",
+        "address": null,
+        "contact_email": null
+    }
+},
+{
+    "model": "api.publishers",
+    "pk": 7,
+    "fields": {
+        "name": "Alphabooks",
+        "address": null,
+        "contact_email": null
+    }
+},
+{
+    "model": "api.users",
+    "pk": 1,
+    "fields": {
+        "username": "admin_01",
+        "password_hash": "pbkdf2_sha256$1200000$NN3XY2OtwyQpRJlRAtZ8kN$flnDr5WTdMuC3goeerRRZrwBBPyzJ65PKX8mN8KDfFI=",
+        "full_name": "Nguyễn Văn Quản Trị",
+        "email": "admin@openlib.com",
+        "role": "Admin",
+        "is_active": true,
+        "created_at": "2026-03-23T09:10:21.265"
+    }
+},
+{
+    "model": "api.users",
+    "pk": 2,
+    "fields": {
+        "username": "lib_hcm",
+        "password_hash": "pbkdf2_sha256$260000$libhash123",
+        "full_name": "Trần Thị Thủ Thư",
+        "email": "thuthu@openlib.com",
+        "role": "Librarian",
+        "is_active": true,
+        "created_at": "2026-03-23T09:10:21.265"
+    }
+},
+{
+    "model": "api.users",
+    "pk": 3,
+    "fields": {
+        "username": "sv_001",
+        "password_hash": "pbkdf2_sha256$1200000$z6vsGl9VQpo0EWVqVixYZw$q/hC1KQln9wqOVJ58g07GlbHpbDJfuX7TR/rtZAnoLE=",
+        "full_name": "Lê Hoàng Sinh Viên",
+        "email": "hoangsv@student.edu.vn",
+        "role": "Member",
+        "is_active": true,
+        "created_at": "2026-03-23T09:10:21.265"
+    }
+},
+{
+    "model": "api.users",
+    "pk": 4,
+    "fields": {
+        "username": "sv_002",
+        "password_hash": "pbkdf2_sha256$1200000$EqA1JC0LIgessIziQ8LCm4$3AVGv0jMikUSVFBA7cgh5luRHLAGolZflEp+m3aeFus=",
+        "full_name": "Phạm Thị Lập Trình",
+        "email": "phamsv@student.edu.vn",
+        "role": "Member",
+        "is_active": true,
+        "created_at": "2026-03-23T09:10:21.265"
+    }
+},
+{
+    "model": "api.users",
+    "pk": 5,
+    "fields": {
+        "username": "test1",
+        "password_hash": "pbkdf2_sha256$1200000$LJ4KJJVytLU7tAOLg9bFsT$EhGLTatppqtXQ35EYpzeJtde2SiIqw/rEYZiZqcAooo=",
+        "full_name": "test",
+        "email": "test1@gmail.com",
+        "role": "Member",
+        "is_active": true,
+        "created_at": null
+    }
+},
+{
+    "model": "api.users",
+    "pk": 6,
+    "fields": {
+        "username": "testuser",
+        "password_hash": "pbkdf2_sha256$1200000$orfJSauAsWVQ9PnbpjUhKp$xnFLioEkBCp0n7ysyNkD6tec5/uTFdk9kmCtwKEek0s=",
+        "full_name": "Test User",
+        "email": "test@example.com",
+        "role": "Member",
+        "is_active": true,
+        "created_at": null
+    }
+},
+{
+    "model": "api.users",
+    "pk": 7,
+    "fields": {
+        "username": "admin",
+        "password_hash": "pbkdf2_sha256$1200000$sDPBFeMF3qeLAYVyeOnPBM$UfkE1cpLNDMpKnOn7RVeE4pCmfA9+BHfIWEpt6C6oFw=",
+        "full_name": "Administrator",
+        "email": "admin@example.com",
+        "role": "Member",
+        "is_active": true,
+        "created_at": null
+    }
+},
+{
+    "model": "api.reviews",
+    "pk": 56,
+    "fields": {
+        "book": 5,
+        "user": 4,
+        "rating": 5,
+        "comment": "Khuyên mọi sinh viên nên mượn đọc cuốn sách này trước khi ra trường để mở mang tầm mắt.",
+        "created_at": "2026-04-10T17:00:43.520Z"
+    }
+},
+{
+    "model": "api.reviews",
+    "pk": 57,
+    "fields": {
+        "book": 5,
+        "user": 2,
+        "rating": 4,
+        "comment": "Tôi đã tìm kiếm tri thức này rất lâu rồi, bộ phận quản lý thư viện làm rất tốt khi cập nhật quyển này.",
+        "created_at": "2026-04-10T17:00:43.532Z"
+    }
+},
+{
+    "model": "api.reviews",
+    "pk": 58,
+    "fields": {
+        "book": 1,
+        "user": 1,
+        "rating": 5,
+        "comment": "Cách viết cực kỳ lôi cuốn, tôi thức trắng đêm để đọc hết một mạch cuốn tiểu thuyết này.",
+        "created_at": "2026-04-10T17:00:43.533Z"
+    }
+},
+{
+    "model": "api.reviews",
+    "pk": 59,
+    "fields": {
+        "book": 1,
+        "user": 2,
+        "rating": 5,
+        "comment": "Quyển sách này thực sự thay đổi cuộc đời tôi! Phải mua ngay để trên kệ sách nhà mình.",
+        "created_at": "2026-04-10T17:00:43.534Z"
+    }
+},
+{
+    "model": "api.reviews",
+    "pk": 60,
+    "fields": {
+        "book": 4,
+        "user": 4,
+        "rating": 4,
+        "comment": "Cách viết cực kỳ lôi cuốn, tôi thức trắng đêm để đọc hết một mạch cuốn tiểu thuyết này.",
+        "created_at": "2026-04-10T17:00:43.535Z"
+    }
+},
+{
+    "model": "api.reviews",
+    "pk": 61,
+    "fields": {
+        "book": 4,
+        "user": 1,
+        "rating": 5,
+        "comment": "Cách viết cực kỳ lôi cuốn, tôi thức trắng đêm để đọc hết một mạch cuốn tiểu thuyết này.",
+        "created_at": "2026-04-10T17:00:43.535Z"
+    }
+},
+{
+    "model": "api.reviews",
+    "pk": 62,
+    "fields": {
+        "book": 2,
+        "user": 5,
+        "rating": 5,
+        "comment": "Tác phẩm mang hơi thở thời đại, sâu sắc và tinh tế. Tác giả đã vượt quá khuôn khổ thường thấy.",
+        "created_at": "2026-04-10T17:00:43.536Z"
+    }
+},
+{
+    "model": "api.reviews",
+    "pk": 63,
+    "fields": {
+        "book": 2,
+        "user": 3,
+        "rating": 4,
+        "comment": "Tác phẩm mang hơi thở thời đại, sâu sắc và tinh tế. Tác giả đã vượt quá khuôn khổ thường thấy.",
+        "created_at": "2026-04-10T17:00:43.536Z"
+    }
+},
+{
+    "model": "api.reviews",
+    "pk": 64,
+    "fields": {
+        "book": 3,
+        "user": 4,
+        "rating": 5,
+        "comment": "Khuyên mọi sinh viên nên mượn đọc cuốn sách này trước khi ra trường để mở mang tầm mắt.",
+        "created_at": "2026-04-10T17:00:43.537Z"
+    }
+},
+{
+    "model": "api.reviews",
+    "pk": 65,
+    "fields": {
+        "book": 3,
+        "user": 1,
+        "rating": 5,
+        "comment": "Khuyên mọi sinh viên nên mượn đọc cuốn sách này trước khi ra trường để mở mang tầm mắt.",
+        "created_at": "2026-04-10T17:00:43.538Z"
+    }
+},
+{
+    "model": "api.reviews",
+    "pk": 66,
+    "fields": {
+        "book": 7,
+        "user": 1,
+        "rating": 5,
+        "comment": "Cách viết cực kỳ lôi cuốn, tôi thức trắng đêm để đọc hết một mạch cuốn tiểu thuyết này.",
+        "created_at": "2026-04-10T17:00:43.539Z"
+    }
+},
+{
+    "model": "api.reviews",
+    "pk": 67,
+    "fields": {
+        "book": 7,
+        "user": 1,
+        "rating": 4,
+        "comment": "Quyển sách này thực sự thay đổi cuộc đời tôi! Phải mua ngay để trên kệ sách nhà mình.",
+        "created_at": "2026-04-10T17:00:43.540Z"
+    }
+},
+{
+    "model": "api.reviews",
+    "pk": 68,
+    "fields": {
+        "book": 8,
+        "user": 4,
+        "rating": 5,
+        "comment": "Khuyên mọi sinh viên nên mượn đọc cuốn sách này trước khi ra trường để mở mang tầm mắt.",
+        "created_at": "2026-04-10T17:00:43.543Z"
+    }
+},
+{
+    "model": "api.reviews",
+    "pk": 69,
+    "fields": {
+        "book": 8,
+        "user": 2,
+        "rating": 5,
+        "comment": "Tôi đã tìm kiếm tri thức này rất lâu rồi, bộ phận quản lý thư viện làm rất tốt khi cập nhật quyển này.",
+        "created_at": "2026-04-10T17:00:43.545Z"
+    }
+},
+{
+    "model": "api.reviews",
+    "pk": 70,
+    "fields": {
+        "book": 9,
+        "user": 3,
+        "rating": 5,
+        "comment": "Khuyên mọi sinh viên nên mượn đọc cuốn sách này trước khi ra trường để mở mang tầm mắt.",
+        "created_at": "2026-04-10T17:00:43.545Z"
+    }
+},
+{
+    "model": "api.reviews",
+    "pk": 71,
+    "fields": {
+        "book": 9,
+        "user": 5,
+        "rating": 5,
+        "comment": "Quyển sách này thực sự thay đổi cuộc đời tôi! Phải mua ngay để trên kệ sách nhà mình.",
+        "created_at": "2026-04-10T17:00:43.546Z"
+    }
+},
+{
+    "model": "api.reviews",
+    "pk": 72,
+    "fields": {
+        "book": 10,
+        "user": 1,
+        "rating": 4,
+        "comment": "Khuyên mọi sinh viên nên mượn đọc cuốn sách này trước khi ra trường để mở mang tầm mắt.",
+        "created_at": "2026-04-10T17:00:43.546Z"
+    }
+},
+{
+    "model": "api.reviews",
+    "pk": 73,
+    "fields": {
+        "book": 10,
+        "user": 2,
+        "rating": 5,
+        "comment": "Tác phẩm mang hơi thở thời đại, sâu sắc và tinh tế. Tác giả đã vượt quá khuôn khổ thường thấy.",
+        "created_at": "2026-04-10T17:00:43.547Z"
+    }
+},
+{
+    "model": "api.reviews",
+    "pk": 74,
+    "fields": {
+        "book": 11,
+        "user": 5,
+        "rating": 5,
+        "comment": "Cách viết cực kỳ lôi cuốn, tôi thức trắng đêm để đọc hết một mạch cuốn tiểu thuyết này.",
+        "created_at": "2026-04-10T17:00:43.547Z"
+    }
+},
+{
+    "model": "api.reviews",
+    "pk": 75,
+    "fields": {
+        "book": 11,
+        "user": 4,
+        "rating": 4,
+        "comment": "Tôi đã tìm kiếm tri thức này rất lâu rồi, bộ phận quản lý thư viện làm rất tốt khi cập nhật quyển này.",
+        "created_at": "2026-04-10T17:00:43.548Z"
+    }
+},
+{
+    "model": "api.reviews",
+    "pk": 76,
+    "fields": {
+        "book": 12,
+        "user": 5,
+        "rating": 4,
+        "comment": "Quyển sách này thực sự thay đổi cuộc đời tôi! Phải mua ngay để trên kệ sách nhà mình.",
+        "created_at": "2026-04-10T17:00:43.548Z"
+    }
+},
+{
+    "model": "api.reviews",
+    "pk": 77,
+    "fields": {
+        "book": 12,
+        "user": 1,
+        "rating": 4,
+        "comment": "Quyển sách này thực sự thay đổi cuộc đời tôi! Phải mua ngay để trên kệ sách nhà mình.",
+        "created_at": "2026-04-10T17:00:43.548Z"
+    }
+},
+{
+    "model": "api.reviews",
+    "pk": 78,
+    "fields": {
+        "book": 13,
+        "user": 2,
+        "rating": 5,
+        "comment": "Tôi đã tìm kiếm tri thức này rất lâu rồi, bộ phận quản lý thư viện làm rất tốt khi cập nhật quyển này.",
+        "created_at": "2026-04-10T17:00:43.549Z"
+    }
+},
+{
+    "model": "api.reviews",
+    "pk": 79,
+    "fields": {
+        "book": 13,
+        "user": 5,
+        "rating": 5,
+        "comment": "Tôi đã tìm kiếm tri thức này rất lâu rồi, bộ phận quản lý thư viện làm rất tốt khi cập nhật quyển này.",
+        "created_at": "2026-04-10T17:00:43.550Z"
+    }
+},
+{
+    "model": "api.reviews",
+    "pk": 80,
+    "fields": {
+        "book": 14,
+        "user": 2,
+        "rating": 4,
+        "comment": "Khuyên mọi sinh viên nên mượn đọc cuốn sách này trước khi ra trường để mở mang tầm mắt.",
+        "created_at": "2026-04-10T17:00:43.551Z"
+    }
+},
+{
+    "model": "api.reviews",
+    "pk": 81,
+    "fields": {
+        "book": 14,
+        "user": 4,
+        "rating": 5,
+        "comment": "Tác phẩm mang hơi thở thời đại, sâu sắc và tinh tế. Tác giả đã vượt quá khuôn khổ thường thấy.",
+        "created_at": "2026-04-10T17:00:43.552Z"
+    }
+},
+{
+    "model": "api.reviews",
+    "pk": 82,
+    "fields": {
+        "book": 3,
+        "user": null,
+        "rating": 5,
+        "comment": "hay",
+        "created_at": "2026-04-12T18:13:41.815Z"
+    }
+},
+{
+    "model": "api.fines",
+    "pk": 1,
+    "fields": {
+        "user": 2,
+        "amount": "50000.00",
+        "reason": "Làm rách trang sách 45",
+        "is_paid": false,
+        "created_at": "2026-04-10T16:08:16.976Z"
+    }
+},
+{
+    "model": "api.fines",
+    "pk": 2,
+    "fields": {
+        "user": 1,
+        "amount": "10000.00",
+        "reason": "Trả sách quá hạn 2 ngày",
+        "is_paid": true,
+        "created_at": "2026-04-10T16:08:16.978Z"
+    }
+},
+{
+    "model": "api.fines",
+    "pk": 3,
+    "fields": {
+        "user": 3,
+        "amount": "150000.00",
+        "reason": "Làm mất hoàn toàn cuốn tiểu thuyết",
+        "is_paid": false,
+        "created_at": "2026-04-10T16:08:16.978Z"
+    }
+}
+]

@@ -9,13 +9,75 @@ import { useNavigate } from 'react-router-dom';
 
 const chartData = [{ val: 400 }, { val: 300 }, { val: 200 }, { val: 450 }, { val: 590 }, { val: 320 }, { val: 680 }];
 
-/* ═══════════════════════════════════════════
-   BORROW REQUESTS PANEL — Admin view
-═══════════════════════════════════════════ */
-const BorrowRequestsPanel = ({ rawData, onRefresh }) => {
-  const [processing, setProcessing] = useState({});
-  const [msgs, setMsgs] = useState({});
+/* ═══════════════════════════════════════════════════════
+   BORROW REQUESTS PANEL — Trang quản trị yêu cầu mượn
+═══════════════════════════════════════════════════════ */
 
+const STATUS_TABS = [
+  { key: 'pending',  label: 'Chờ duyệt',  icon: '⏳', color: '#b45309', accent: '#f59e0b', bg: 'rgba(245,158,11,0.13)', border: 'rgba(245,158,11,0.4)' },
+  { key: 'active',   label: 'Đang mượn', icon: '📚', color: '#4338ca', accent: '#6366f1', bg: 'rgba(99,102,241,0.13)',  border: 'rgba(99,102,241,0.4)'  },
+  { key: 'rejected', label: 'Từ chối',   icon: '❌', color: '#dc2626', accent: '#ef4444', bg: 'rgba(239,68,68,0.13)',   border: 'rgba(239,68,68,0.4)'   },
+  { key: 'returned', label: 'Đã trả',    icon: '✅', color: '#059669', accent: '#10b981', bg: 'rgba(16,185,129,0.13)',  border: 'rgba(16,185,129,0.4)'  },
+  { key: 'overdue',  label: 'Quá hạn',   icon: '⚠️', color: '#9f1239', accent: '#e11d48', bg: 'rgba(225,29,72,0.1)',   border: 'rgba(225,29,72,0.35)'  },
+  { key: 'all',      label: 'Tất cả',    icon: '📂', color: '#475569', accent: '#64748b', bg: 'rgba(100,116,139,0.1)',  border: 'rgba(100,116,139,0.3)' },
+];
+
+const STATUS_INFO = {
+  // Exact PostgreSQL ENUM values (viết hoa)
+  Pending:   { text: 'Chờ duyệt',   color: '#b45309', bg: 'rgba(245,158,11,0.13)', border: 'rgba(245,158,11,0.35)', icon: '⏳' },
+  Active:    { text: 'Đang mượn',  color: '#4338ca', bg: 'rgba(99,102,241,0.13)',  border: 'rgba(99,102,241,0.35)', icon: '📚' },
+  Rejected:  { text: 'Từ chối',    color: '#dc2626', bg: 'rgba(239,68,68,0.13)',   border: 'rgba(239,68,68,0.35)',  icon: '❌' },
+  Returned:  { text: 'Đã trả sách',color: '#059669', bg: 'rgba(16,185,129,0.13)',  border: 'rgba(16,185,129,0.35)', icon: '✅' },
+  Completed: { text: 'Hoàn thành', color: '#059669', bg: 'rgba(16,185,129,0.13)',  border: 'rgba(16,185,129,0.35)', icon: '✅' },
+  Overdue:   { text: 'Quá hạn',    color: '#9f1239', bg: 'rgba(225,29,72,0.1)',   border: 'rgba(225,29,72,0.35)',  icon: '⚠️' },
+  // lowercase aliases (fallback)
+  pending:   { text: 'Chờ duyệt',   color: '#b45309', bg: 'rgba(245,158,11,0.13)', border: 'rgba(245,158,11,0.35)', icon: '⏳' },
+  active:    { text: 'Đang mượn',  color: '#4338ca', bg: 'rgba(99,102,241,0.13)',  border: 'rgba(99,102,241,0.35)', icon: '📚' },
+  rejected:  { text: 'Từ chối',    color: '#dc2626', bg: 'rgba(239,68,68,0.13)',   border: 'rgba(239,68,68,0.35)',  icon: '❌' },
+  returned:  { text: 'Đã trả sách',color: '#059669', bg: 'rgba(16,185,129,0.13)',  border: 'rgba(16,185,129,0.35)', icon: '✅' },
+  overdue:   { text: 'Quá hạn',    color: '#9f1239', bg: 'rgba(225,29,72,0.1)',   border: 'rgba(225,29,72,0.35)',  icon: '⚠️' },
+};
+
+
+const BorrowRequestsPanel = () => {
+  const [activeStatus, setActiveStatus] = useState('pending');
+  const [allData,      setAllData]      = useState({});
+  const [loadingTab,   setLoadingTab]   = useState({});
+  const [processing,   setProcessing]   = useState({});
+  const [msgs,         setMsgs]         = useState({});
+  const [search,       setSearch]       = useState('');
+
+  /* ── Fetch một status tab ── */
+  const fetchTab = async (statusKey) => {
+    setLoadingTab(p => ({ ...p, [statusKey]: true }));
+    try {
+      const url = `http://127.0.0.1:8000/api/borrow_request/?status=${statusKey}`;
+      const res = await axios.get(url);
+      setAllData(prev => ({ ...prev, [statusKey]: Array.isArray(res.data) ? res.data : [] }));
+    } catch { /* silent */ }
+    finally { setLoadingTab(p => ({ ...p, [statusKey]: false })); }
+  };
+
+  useEffect(() => {
+    STATUS_TABS.forEach(t => fetchTab(t.key));
+  }, []);
+
+  /* ── Filtered list ── */
+  const currentList  = allData[activeStatus] || [];
+  const isTabLoading = !!loadingTab[activeStatus];
+
+  const filteredList = useMemo(() => {
+    const s = search.toLowerCase().trim();
+    if (!s) return currentList;
+    return currentList.filter(ticket =>
+      ticket.member_name?.toLowerCase().includes(s) ||
+      ticket.member_username?.toLowerCase().includes(s) ||
+      ticket.books?.some(b => b.title?.toLowerCase().includes(s)) ||
+      String(ticket.ticket_id).includes(s)
+    );
+  }, [currentList, search]);
+
+  /* ── Approve / Reject ── */
   const handleAction = async (ticketId, action) => {
     setProcessing(p => ({ ...p, [ticketId]: action }));
     try {
@@ -27,8 +89,10 @@ const BorrowRequestsPanel = ({ rawData, onRefresh }) => {
       setMsgs(m => ({ ...m, [ticketId]: { type: action, text: res.data.message } }));
       setTimeout(() => {
         setMsgs(m => { const n = { ...m }; delete n[ticketId]; return n; });
-        onRefresh();
-      }, 2500);
+        fetchTab('pending');
+        fetchTab(action === 'approve' ? 'active' : 'rejected');
+        fetchTab('all');
+      }, 2200);
     } catch (err) {
       setMsgs(m => ({ ...m, [ticketId]: { type: 'error', text: err.response?.data?.error || 'Lỗi xử lý' } }));
     } finally {
@@ -36,121 +100,308 @@ const BorrowRequestsPanel = ({ rawData, onRefresh }) => {
     }
   };
 
-  const C = { bg: 'var(--bg)', surface: 'var(--surface)', border: 'var(--border)', accent: 'var(--accent)', textPrim: 'var(--text-primary)', textSec: 'var(--text-secondary)' };
+  const activeTabDef = STATUS_TABS.find(t => t.key === activeStatus);
 
   return (
-    <div style={{ padding: '0 0 2rem' }}>
-      {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
-        <div>
-          <h2 style={{ fontSize: '1.4rem', fontWeight: 900, color: C.textPrim, marginBottom: '0.25rem' }}>
-            📬 Yêu cầu mượn sách
-          </h2>
-          <p style={{ color: C.textSec, fontSize: '0.875rem' }}>
-            Xem xét và duyệt / từ chối các yêu cầu mượn từ người dùng
-          </p>
+    <div style={{ paddingBottom: '2rem' }}>
+
+      {/* ── STAT CARDS ── */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem', marginBottom: '1.75rem' }}>
+        {STATUS_TABS.filter(t => !['all', 'overdue'].includes(t.key)).map(t => {
+          const count = allData[t.key]?.length ?? 0;
+          const isActive = activeStatus === t.key;
+          return (
+            <div
+              key={t.key}
+              onClick={() => setActiveStatus(t.key)}
+              style={{
+                background: isActive ? t.bg : 'var(--card-bg)',
+                border: `2px solid ${isActive ? t.border : 'var(--table-border)'}`,
+                borderRadius: '1rem', padding: '1.1rem 1.4rem',
+                cursor: 'pointer', transition: 'all .22s',
+                boxShadow: isActive ? `0 6px 20px ${t.accent}25` : 'var(--shadow-sm)',
+                transform: isActive ? 'translateY(-2px)' : 'none',
+              }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem' }}>
+                <span style={{ fontSize: '1.5rem' }}>{t.icon}</span>
+                <span style={{ fontSize: '1.75rem', fontWeight: 900, color: isActive ? t.accent : 'var(--text-primary)', lineHeight: 1 }}>
+                  {loadingTab[t.key] ? '…' : count}
+                </span>
+              </div>
+              <div style={{ fontWeight: 700, fontSize: '0.8rem', color: isActive ? t.color : 'var(--text-secondary)' }}>
+                {t.label}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* ── STATUS TAB FILTER BAR ── */}
+      <div style={{
+        display: 'flex', gap: '0.4rem', marginBottom: '1.4rem',
+        background: 'var(--card-bg)', padding: '0.35rem',
+        borderRadius: '1rem', border: '1px solid var(--table-border)',
+        width: 'fit-content', flexWrap: 'wrap',
+      }}>
+        {STATUS_TABS.map(t => {
+          const isActive = activeStatus === t.key;
+          const count = allData[t.key]?.length ?? 0;
+          return (
+            <button
+              key={t.key}
+              onClick={() => setActiveStatus(t.key)}
+              style={{
+                padding: '0.45rem 1rem', borderRadius: '0.75rem', border: 'none',
+                fontWeight: 700, fontSize: '0.8rem', cursor: 'pointer', transition: 'all .2s',
+                background: isActive ? t.bg : 'transparent',
+                color: isActive ? t.color : 'var(--text-secondary)',
+                display: 'flex', alignItems: 'center', gap: '0.35rem',
+              }}
+            >
+              <span>{t.icon}</span>
+              <span>{t.label}</span>
+              <span style={{
+                background: isActive ? t.accent : 'var(--table-border)',
+                color: '#fff', fontSize: '0.68rem', fontWeight: 800,
+                padding: '0.05rem 0.4rem', borderRadius: '50px', minWidth: '18px', textAlign: 'center',
+              }}>
+                {count}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* ── TOOLBAR ── */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '0.75rem' }}>
+        {/* Search */}
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: '0.6rem',
+          background: 'var(--card-bg)', border: '1px solid var(--table-border)',
+          padding: '0.55rem 1.1rem', borderRadius: '0.75rem', width: '320px',
+        }}>
+          <Search size={15} color="#94a3b8" />
+          <input
+            type="text"
+            placeholder="Tìm tên, username, tên sách, mã phiếu..."
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            style={{
+              border: 'none', outline: 'none', background: 'transparent',
+              fontSize: '0.84rem', color: 'var(--text-primary)', fontWeight: 500, width: '100%',
+            }}
+          />
+          {search && (
+            <button onClick={() => setSearch('')} style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#94a3b8', fontSize: '1rem', lineHeight: 1 }}>✕</button>
+          )}
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-          <span style={{ background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.3)', color: '#b45309', padding: '0.35rem 1rem', borderRadius: '50px', fontSize: '0.82rem', fontWeight: 800 }}>
-            ⏳ {rawData.length} đang chờ
-          </span>
-          <button onClick={onRefresh} style={{ background: 'var(--accent)', color: '#fff', border: 'none', padding: '0.5rem 1rem', borderRadius: '8px', cursor: 'pointer', fontWeight: 700, fontSize: '0.82rem' }}>
+
+        {/* Right controls */}
+        <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center' }}>
+          {activeStatus === 'pending' && currentList.length > 0 && (
+            <span style={{
+              background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.35)',
+              color: '#b45309', padding: '0.4rem 1rem', borderRadius: '50px', fontSize: '0.8rem', fontWeight: 700,
+            }}>
+              ⏳ {currentList.length} yêu cầu chờ xử lý
+            </span>
+          )}
+          {search && filteredList.length !== currentList.length && (
+            <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600 }}>
+              Hiển thị {filteredList.length} / {currentList.length} kết quả
+            </span>
+          )}
+          <button
+            onClick={() => STATUS_TABS.forEach(t => fetchTab(t.key))}
+            style={{
+              background: 'var(--accent)', color: '#fff', border: 'none',
+              padding: '0.5rem 1.1rem', borderRadius: '0.75rem',
+              cursor: 'pointer', fontWeight: 700, fontSize: '0.82rem',
+              display: 'flex', alignItems: 'center', gap: '0.4rem',
+              transition: 'all .2s',
+            }}
+            onMouseEnter={e => e.currentTarget.style.opacity = '0.85'}
+            onMouseLeave={e => e.currentTarget.style.opacity = '1'}
+          >
             ↻ Làm mới
           </button>
         </div>
       </div>
 
-      {rawData.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: '4rem', background: C.surface, borderRadius: '1.25rem', border: `1px dashed ${C.border}` }}>
-          <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>✅</div>
-          <h3 style={{ color: C.textPrim, marginBottom: '0.5rem' }}>Không có yêu cầu nào đang chờ</h3>
-          <p style={{ color: C.textSec, fontSize: '0.875rem' }}>Tất cả yêu cầu mượn đã được xử lý.</p>
+      {/* ── TICKET LIST ── */}
+      {isTabLoading ? (
+        <div style={{ textAlign: 'center', padding: '4rem', color: 'var(--text-secondary)' }}>
+          <Loader2 size={36} color="var(--accent)" style={{ animation: 'spin 1s linear infinite' }} />
+          <p style={{ marginTop: '1rem', fontWeight: 600 }}>Đang tải dữ liệu...</p>
+        </div>
+      ) : filteredList.length === 0 ? (
+        <div style={{
+          textAlign: 'center', padding: '4rem 2rem',
+          background: 'var(--card-bg)', borderRadius: '1.25rem',
+          border: '1.5px dashed var(--table-border)',
+        }}>
+          <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>
+            {activeStatus === 'pending' ? '✅' : activeStatus === 'rejected' ? '🚫' : activeStatus === 'returned' ? '📗' : '📭'}
+          </div>
+          <h3 style={{ color: 'var(--text-primary)', marginBottom: '0.5rem', fontWeight: 800 }}>Không có yêu cầu nào</h3>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem' }}>
+            {search ? `Không tìm thấy kết quả phù hợp với "${search}"` : 'Không có yêu cầu mượn nào ở trạng thái này.'}
+          </p>
         </div>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          {rawData.map(ticket => (
-            <div key={ticket.ticket_id} style={{
-              background: C.surface, border: `1px solid ${C.border}`, borderRadius: '1.25rem',
-              padding: '1.5rem 2rem', display: 'flex', alignItems: 'center', gap: '1.5rem',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.04)', flexWrap: 'wrap',
-              borderLeft: '4px solid #f59e0b',
-            }}>
-              {/* Badge */}
-              <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: 'rgba(245,158,11,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                <span style={{ fontSize: '1.4rem' }}>📖</span>
-              </div>
-
-              {/* Info */}
-              <div style={{ flex: 1, minWidth: '200px' }}>
-                <div style={{ fontWeight: 800, fontSize: '1rem', color: C.textPrim, marginBottom: '0.25rem' }}>
-                  {ticket.books?.length > 0 ? ticket.books[0].title : '(Không rõ sách)'}
-                </div>
-                <div style={{ fontSize: '0.82rem', color: C.textSec, display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
-                  <span>👤 <strong>{ticket.member_name}</strong> ({ticket.member_username})</span>
-                  <span>📅 {ticket.borrow_date}</span>
-                  {ticket.books?.[0]?.due_date && <span>⏰ Hạn trả: {ticket.books[0].due_date}</span>}
-                </div>
-                <div style={{ marginTop: '0.35rem' }}>
-                  <span style={{ background: 'rgba(245,158,11,0.12)', color: '#b45309', padding: '0.15rem 0.6rem', borderRadius: '50px', fontSize: '0.72rem', fontWeight: 700 }}>
-                    ⏳ Chờ duyệt — Mã #{ticket.ticket_id}
-                  </span>
-                </div>
-              </div>
-
-              {/* Feedback message */}
-              {msgs[ticket.ticket_id] && (
-                <div style={{
-                  padding: '0.5rem 1rem', borderRadius: '8px', fontSize: '0.82rem', fontWeight: 700,
-                  background: msgs[ticket.ticket_id].type === 'approve' ? '#d1fae5' : '#fef2f2',
-                  color: msgs[ticket.ticket_id].type === 'approve' ? '#065f46' : '#991b1b',
-                  border: `1px solid ${msgs[ticket.ticket_id].type === 'approve' ? '#a7f3d0' : '#fecaca'}`,
-                }}>
-                  {msgs[ticket.ticket_id].text}
-                </div>
-              )}
-
-              {/* Action buttons */}
-              <div style={{ display: 'flex', gap: '0.75rem', flexShrink: 0 }}>
-                <button
-                  onClick={() => handleAction(ticket.ticket_id, 'approve')}
-                  disabled={!!processing[ticket.ticket_id]}
+        <AnimatePresence mode="popLayout">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.875rem' }}>
+            {filteredList.map((ticket, idx) => {
+              const si = STATUS_INFO[ticket.status] || { text: ticket.status, color: '#64748b', bg: '#f1f5f9', border: '#e2e8f0', icon: '📋' };
+              const isPending = ticket.status.toLowerCase() === 'pending';
+              return (
+                <motion.div
+                  key={ticket.ticket_id}
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.97 }}
+                  transition={{ delay: idx * 0.04 }}
                   style={{
-                    background: 'linear-gradient(135deg,#059669,#10b981)', color: '#fff',
-                    border: 'none', padding: '0.6rem 1.25rem', borderRadius: '10px',
-                    fontWeight: 800, fontSize: '0.875rem', cursor: processing[ticket.ticket_id] ? 'not-allowed' : 'pointer',
-                    display: 'flex', alignItems: 'center', gap: '0.4rem',
-                    boxShadow: '0 4px 12px rgba(16,185,129,0.3)', transition: 'transform .2s',
-                    opacity: processing[ticket.ticket_id] ? 0.7 : 1,
+                    background: 'var(--card-bg)',
+                    backdropFilter: 'blur(12px)',
+                    border: '1px solid var(--table-border)',
+                    borderLeft: `4px solid ${si.color}`,
+                    borderRadius: '1rem',
+                    padding: '1.2rem 1.5rem',
+                    display: 'flex', alignItems: 'flex-start', gap: '1.25rem',
+                    boxShadow: 'var(--shadow-sm)', flexWrap: 'wrap',
+                    transition: 'box-shadow .2s',
                   }}
-                  onMouseEnter={e => { if (!processing[ticket.ticket_id]) e.currentTarget.style.transform = 'scale(1.05)'; }}
-                  onMouseLeave={e => e.currentTarget.style.transform = ''}
+                  onMouseEnter={e => e.currentTarget.style.boxShadow = 'var(--shadow-md)'}
+                  onMouseLeave={e => e.currentTarget.style.boxShadow = 'var(--shadow-sm)'}
                 >
-                  {processing[ticket.ticket_id] === 'approve' ? '...' : '✓ Duyệt'}
-                </button>
-                <button
-                  onClick={() => handleAction(ticket.ticket_id, 'reject')}
-                  disabled={!!processing[ticket.ticket_id]}
-                  style={{
-                    background: '#fff', color: '#ef4444',
-                    border: '1px solid #fecaca', padding: '0.6rem 1.25rem', borderRadius: '10px',
-                    fontWeight: 800, fontSize: '0.875rem', cursor: processing[ticket.ticket_id] ? 'not-allowed' : 'pointer',
-                    display: 'flex', alignItems: 'center', gap: '0.4rem', transition: 'all .2s',
-                    opacity: processing[ticket.ticket_id] ? 0.7 : 1,
-                  }}
-                  onMouseEnter={e => { if (!processing[ticket.ticket_id]) { e.currentTarget.style.background = '#fef2f2'; } }}
-                  onMouseLeave={e => e.currentTarget.style.background = '#fff'}
-                >
-                  {processing[ticket.ticket_id] === 'reject' ? '...' : '✕ Từ chối'}
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
+                  {/* Icon */}
+                  <div style={{
+                    width: '46px', height: '46px', borderRadius: '12px',
+                    background: si.bg, border: `1px solid ${si.border}`,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    flexShrink: 0, fontSize: '1.3rem',
+                  }}>
+                    {si.icon}
+                  </div>
+
+                  {/* Info block */}
+                  <div style={{ flex: 1, minWidth: '240px' }}>
+                    {/* Book title(s) + status badge + ID */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.3rem', flexWrap: 'wrap' }}>
+                      <span style={{ fontWeight: 800, fontSize: '0.975rem', color: 'var(--text-primary)' }}>
+                        {ticket.books?.length > 0
+                          ? ticket.books.map(b => b.title).join(' · ')
+                          : '(Không rõ sách)'}
+                      </span>
+                      <span style={{
+                        padding: '0.15rem 0.65rem', borderRadius: '50px',
+                        fontSize: '0.7rem', fontWeight: 800,
+                        background: si.bg, color: si.color, border: `1px solid ${si.border}`,
+                      }}>
+                        {si.text}
+                      </span>
+                      <span style={{ fontSize: '0.73rem', color: 'var(--text-secondary)', fontWeight: 600 }}>
+                        #{ticket.ticket_id}
+                      </span>
+                    </div>
+
+                    {/* Meta row */}
+                    <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', display: 'flex', gap: '1.25rem', flexWrap: 'wrap', marginBottom: '0.4rem' }}>
+                      <span>
+                        👤 <strong style={{ color: 'var(--text-primary)', fontWeight: 700 }}>{ticket.member_name}</strong>
+                        {' '}({ticket.member_username})
+                      </span>
+                      <span>📅 Ngày mượn: {ticket.borrow_date}</span>
+                      {ticket.books?.[0]?.due_date   && <span>⏰ Hạn trả: {ticket.books[0].due_date}</span>}
+                      {ticket.books?.[0]?.return_date && <span>🔄 Ngày trả: {ticket.books[0].return_date}</span>}
+                    </div>
+
+                    {/* Librarian tag */}
+                    {ticket.librarian_name && (
+                      <div style={{ marginTop: '0.25rem' }}>
+                        <span style={{
+                          background: 'rgba(99,102,241,0.1)', color: '#6366f1',
+                          padding: '0.15rem 0.65rem', borderRadius: '50px',
+                          fontSize: '0.72rem', fontWeight: 700,
+                        }}>
+                          🧑‍💼 Xử lý bởi: {ticket.librarian_name}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Feedback message */}
+                  {msgs[ticket.ticket_id] && (
+                    <div style={{
+                      padding: '0.45rem 1rem', borderRadius: '8px', fontSize: '0.82rem', fontWeight: 700, alignSelf: 'center',
+                      background: msgs[ticket.ticket_id].type === 'approve' ? '#d1fae5'
+                                : msgs[ticket.ticket_id].type === 'reject'  ? '#fef2f2' : '#fef9c3',
+                      color:      msgs[ticket.ticket_id].type === 'approve' ? '#065f46'
+                                : msgs[ticket.ticket_id].type === 'reject'  ? '#991b1b' : '#92400e',
+                      border: `1px solid ${msgs[ticket.ticket_id].type === 'approve' ? '#a7f3d0'
+                              : msgs[ticket.ticket_id].type === 'reject'  ? '#fecaca' : '#fde68a'}`,
+                    }}>
+                      {msgs[ticket.ticket_id].text}
+                    </div>
+                  )}
+
+                  {/* Action buttons — chỉ hiện khi pending */}
+                  {isPending && !msgs[ticket.ticket_id] && (
+                    <div style={{ display: 'flex', gap: '0.6rem', flexShrink: 0, alignSelf: 'center' }}>
+                      <button
+                        onClick={() => handleAction(ticket.ticket_id, 'approve')}
+                        disabled={!!processing[ticket.ticket_id]}
+                        style={{
+                          background: 'linear-gradient(135deg,#059669,#10b981)',
+                          color: '#fff', border: 'none',
+                          padding: '0.55rem 1.15rem', borderRadius: '9px',
+                          fontWeight: 800, fontSize: '0.82rem',
+                          cursor: processing[ticket.ticket_id] ? 'not-allowed' : 'pointer',
+                          display: 'flex', alignItems: 'center', gap: '0.3rem',
+                          boxShadow: '0 4px 12px rgba(16,185,129,0.3)',
+                          opacity: processing[ticket.ticket_id] ? 0.65 : 1,
+                          transition: 'all .2s',
+                        }}
+                        onMouseEnter={e => { if (!processing[ticket.ticket_id]) e.currentTarget.style.transform = 'translateY(-2px)'; }}
+                        onMouseLeave={e => e.currentTarget.style.transform = ''}
+                      >
+                        {processing[ticket.ticket_id] === 'approve' ? <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> : '✓ Duyệt'}
+                      </button>
+                      <button
+                        onClick={() => handleAction(ticket.ticket_id, 'reject')}
+                        disabled={!!processing[ticket.ticket_id]}
+                        style={{
+                          background: 'var(--card-bg)', color: '#ef4444',
+                          border: '1.5px solid #fecaca',
+                          padding: '0.55rem 1.15rem', borderRadius: '9px',
+                          fontWeight: 800, fontSize: '0.82rem',
+                          cursor: processing[ticket.ticket_id] ? 'not-allowed' : 'pointer',
+                          display: 'flex', alignItems: 'center', gap: '0.3rem',
+                          opacity: processing[ticket.ticket_id] ? 0.65 : 1,
+                          transition: 'all .2s',
+                        }}
+                        onMouseEnter={e => { if (!processing[ticket.ticket_id]) { e.currentTarget.style.background = '#fef2f2'; e.currentTarget.style.transform = 'translateY(-2px)'; } }}
+                        onMouseLeave={e => { e.currentTarget.style.background = 'var(--card-bg)'; e.currentTarget.style.transform = ''; }}
+                      >
+                        {processing[ticket.ticket_id] === 'reject' ? <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> : '✕ Từ chối'}
+                      </button>
+                    </div>
+                  )}
+                </motion.div>
+              );
+            })}
+          </div>
+        </AnimatePresence>
       )}
     </div>
   );
 };
 
+/* ════════════════════════════
+   MAIN DASHBOARD COMPONENT
+════════════════════════════ */
 const Dashboard = ({ activeTab, tabs }) => {
   const [data, setData] = useState([]);
   const [booksRaw, setBooksRaw] = useState([]);
@@ -181,7 +432,11 @@ const Dashboard = ({ activeTab, tabs }) => {
   };
 
   useEffect(() => {
-    fetchData(activeTab);
+    if (activeTab !== 'borrow_requests') {
+      fetchData(activeTab);
+    } else {
+      setLoading(false);
+    }
   }, [activeTab]);
 
   const filteredData = useMemo(() => {
@@ -208,6 +463,7 @@ const Dashboard = ({ activeTab, tabs }) => {
       return matchSearch && matchStatus;
     });
   }, [data, searchTerm, activeFilter]);
+
   // PAGINATION LOGIC
   const totalPages = Math.ceil(filteredData.length / itemsPerPage);
   const paginatedData = useMemo(() => {
@@ -291,14 +547,18 @@ const Dashboard = ({ activeTab, tabs }) => {
     return <div style={{ padding: '6rem', textAlign: 'center' }}><Loader2 className="spinner" size={40} color="var(--accent)" /></div>;
   }
 
+  /* ══ Nếu đang ở tab Yêu cầu mượn → render panel riêng, không render stats/table ══ */
+  if (activeTab === 'borrow_requests') {
+    return (
+      <div className="dashboard-wrapper">
+        <BorrowRequestsPanel />
+      </div>
+    );
+  }
+
   return (
     <div className="dashboard-wrapper">
       {activeTab === 'dashboard' && <QuickActions />}
-
-      {/* ══ BORROW REQUESTS ADMIN VIEW ══ */}
-      {activeTab === 'borrow_requests' && (
-        <BorrowRequestsPanel currentUser={null} onRefresh={() => fetchData('borrow_requests')} rawData={data} />
-      )}
 
       <section className="stats-grid">
          {stats.map((s, idx) => (
@@ -491,20 +751,20 @@ const Dashboard = ({ activeTab, tabs }) => {
                              </td>
                           </motion.tr>
                        ))}
-                    </AnimatePresence>
-                 </tbody>
-              </table>
-              {totalPages > 1 && (
-                 <div className="pagination">
-                   <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: 600 }}>Hiển thị trang {currentPage} / {totalPages}</div>
-                   <div className="page-numbers">
-                      {Array.from({ length: totalPages }, (_, i) => (
-                         <button key={i} className={`page-btn ${currentPage === i + 1 ? 'active' : ''}`} onClick={() => setCurrentPage(i + 1)}>{i + 1}</button>
-                      ))}
-                   </div>
-                 </div>
-              )}
-           </div>
+                   </AnimatePresence>
+                </tbody>
+             </table>
+             {totalPages > 1 && (
+                <div className="pagination">
+                  <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: 600 }}>Hiển thị trang {currentPage} / {totalPages}</div>
+                  <div className="page-numbers">
+                     {Array.from({ length: totalPages }, (_, i) => (
+                        <button key={i} className={`page-btn ${currentPage === i + 1 ? 'active' : ''}`} onClick={() => setCurrentPage(i + 1)}>{i + 1}</button>
+                     ))}
+                  </div>
+                </div>
+             )}
+          </div>
        </div>
       )}
     </div>

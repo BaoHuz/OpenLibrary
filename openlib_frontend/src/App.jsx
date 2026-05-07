@@ -64,7 +64,7 @@ function App() {
         <Route path="/books/:bookId" element={<BookDetailPage user={currentUser} />} />
         
         {/* LOGIN / REGISTER Toggled Screen */}
-        <Route path="/login" element={isAuth ? <Navigate to={(currentUser?.role?.toLowerCase() === 'admin' || currentUser?.role?.toLowerCase() === 'librarian') ? "/admin" : "/"} /> : <Login onLoginSuccess={handleLoginSuccess} />} />
+        <Route path="/login" element={isAuth ? <Navigate to="/" /> : <Login onLoginSuccess={handleLoginSuccess} />} />
         
         {/* ADMIN ROUTES */}
         <Route path="/admin/*" element={

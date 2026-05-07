@@ -83,15 +83,56 @@ const BookDetailPage = ({ user }) => {
   const [allBooks, setAllBooks] = useState([]);
   const [reviews, setReviews] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [liked, setLiked] = useState(false);
   const [userRating, setUserRating] = useState(0);
   const [hoverRating, setHoverRating] = useState(0);
   const [comment, setComment] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [submitMsg, setSubmitMsg] = useState('');
 
+  const getStorageKey = () => user ? `liked_${user.username}` : 'liked_guest';
+  const [liked, setLiked] = useState(() => {
+    try {
+      const stored = localStorage.getItem(getStorageKey());
+      const likedBooks = stored ? JSON.parse(stored) : {};
+      return likedBooks[bookId] || false;
+    } catch {
+      return false;
+    }
+  });
+
+  const handleToggleLike = () => {
+    try {
+      const key = getStorageKey();
+      const stored = localStorage.getItem(key);
+      const likedBooks = stored ? JSON.parse(stored) : {};
+      const newLikedValue = !liked;
+      
+      if (newLikedValue) {
+        likedBooks[bookId] = true;
+      } else {
+        delete likedBooks[bookId];
+      }
+      
+      localStorage.setItem(key, JSON.stringify(likedBooks));
+      setLiked(newLikedValue);
+    } catch (e) {
+      console.error('Failed to update like state:', e);
+    }
+  };
+
   /* Scroll to top on load */
   useEffect(() => { window.scrollTo({ top: 0, behavior: 'smooth' }); }, [bookId]);
+
+  useEffect(() => {
+    try {
+      const key = getStorageKey();
+      const stored = localStorage.getItem(key);
+      const likedBooks = stored ? JSON.parse(stored) : {};
+      setLiked(likedBooks[bookId] || false);
+    } catch {
+      setLiked(false);
+    }
+  }, [bookId, user]);
 
   useEffect(() => {
     const loadAll = async () => {
@@ -235,9 +276,8 @@ const BookDetailPage = ({ user }) => {
             <ChevronRight size={14} />
             <span style={{ fontWeight: 600, color: C.textPrim, maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{book.title}</span>
           </div>
-          <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '0.6rem', cursor: 'pointer', color: C.accent, fontWeight: 900, fontSize: '1.2rem' }} onClick={() => navigate('/')}>
-            <div style={{ width: '8px', height: '8px', background: C.accent, borderRadius: '50%' }} />
-            OpenLib
+          <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '0.6rem', cursor: 'pointer' }} onClick={() => navigate('/')}>
+            <img src="/logo.svg" alt="OpenLib Logo" style={{ height: '36px', width: 'auto', maxWidth: '144px' }} />
           </div>
         </div>
       </nav>
@@ -288,7 +328,7 @@ const BookDetailPage = ({ user }) => {
                 )}
               </button>
               <button
-                onClick={() => setLiked(l => !l)}
+                onClick={handleToggleLike}
                 style={{ width: '46px', height: '46px', borderRadius: '12px', background: liked ? '#ef4444' : C.surface, border: `1px solid ${liked ? '#ef4444' : C.border}`, color: liked ? '#fff' : C.textMut, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'all .2s' }}
               >
                 <Heart size={18} fill={liked ? '#fff' : 'none'} />
