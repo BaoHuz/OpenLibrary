@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useOutletContext } from 'react-router-dom';
 import axios from 'axios';
 import {
   BookOpen, Search, LogIn, BookMarked, Star, TrendingUp,
@@ -8,6 +8,7 @@ import {
   MapPin, Phone, Mail, CheckCircle, Zap, Shield, Globe, Menu,
   Bell, CreditCard, History, UserCog, Unlock, Tag
 } from 'lucide-react';
+import { getImageUrl } from './utils/imageUrl';
 import './App.css';
 
 const API = 'http://127.0.0.1:8000/api';
@@ -37,6 +38,17 @@ const Stars = ({ rating }) => (
     ))}
   </div>
 );
+/* ── Stat Card for About page ── */
+const StatCard = ({ icon, target, suffix, label, color, bg, surface }) => {
+  const animVal = useCounter(target, 1200);
+  return (
+    <div style={{ textAlign: 'center', padding: '2rem 1rem', background: bg, borderRadius: '1.25rem', transition: 'transform .25s, box-shadow .25s' }} onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-4px)'; e.currentTarget.style.boxShadow = `0 12px 28px ${color}20`; }} onMouseLeave={e => { e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = 'none'; }}>
+      <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: surface, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1rem', color: color, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>{icon}</div>
+      <div style={{ fontSize: '2.25rem', fontWeight: 900, color: color, marginBottom: '0.3rem' }}>{target > 0 ? animVal : ''}{suffix}</div>
+      <div style={{ color: '#475569', fontSize: '0.85rem', fontWeight: 600 }}>{label}</div>
+    </div>
+  );
+};
 
 /* ── Book Card (light) ── */
 const BookCard = ({ book, avgRating, onClick, onBorrow, liked, onToggleLike }) => (
@@ -47,7 +59,7 @@ const BookCard = ({ book, avgRating, onClick, onBorrow, liked, onToggleLike }) =
   >
     <div style={{ height: '320px', borderRadius: '1rem', overflow: 'hidden', background: 'linear-gradient(135deg,#e0e7ff,#f3e8ff)', position: 'relative', boxShadow: '0 4px 20px rgba(99,102,241,0.12)' }} className="poster-wrapper">
       {book.image
-        ? <img src={book.image} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt={book.title} />
+        ? <img src={getImageUrl(book.image)} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt={book.title} />
         : <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><BookOpen size={48} color="rgba(99,102,241,0.3)" /></div>
       }
       {/* Stock badge */}
@@ -97,21 +109,13 @@ const BookCard = ({ book, avgRating, onClick, onBorrow, liked, onToggleLike }) =
    MAIN COMPONENT
 ════════════════════════════════════════════════ */
 const PublicPage = ({ user, onLogout }) => {
+  const { currentView, setCurrentView, searchTerm, setSearchTerm, selectedCategory, setSelectedCategory } = useOutletContext();
   const [books, setBooks] = useState([]);
   const [categories, setCategories] = useState([]);
   const [authors, setAuthors] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [currentView, setCurrentView] = useState('home');
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState(null);
-  const [selectedBook, setSelectedBook] = useState(null);
-  const [isBorrowing, setIsBorrowing] = useState(false);
-  const [reviews, setReviews] = useState([]);
-  
   // New States for Profile, Notifications & advanced filters
   const [activeProfileTab, setActiveProfileTab] = useState('info');
-  const [notifications, setNotifications] = useState([]);
-  const [showNotif, setShowNotif] = useState(false);
   const [filters, setFilters] = useState({
     stock: 'all',
     sortBy: 'latest',
@@ -121,6 +125,17 @@ const PublicPage = ({ user, onLogout }) => {
   const [fines, setFines] = useState([]);
   const [catPage, setCatPage] = useState(1);
   const [authorPage, setAuthorPage] = useState(1);
+  const [selectedBook, setSelectedBook] = useState(null);
+  const [selectedAuthor, setSelectedAuthor] = useState(null);
+  const [authorSearchTerm, setAuthorSearchTerm] = useState('');
+  const [followedAuthors, setFollowedAuthors] = useState(() => {
+    try {
+      const stored = localStorage.getItem(`followed_${user?.username || 'guest'}`);
+      return stored ? JSON.parse(stored) : {};
+    } catch { return {}; }
+  });
+  const [isBorrowing, setIsBorrowing] = useState(false);
+  const [reviews, setReviews] = useState([]);
 
   const navigate = useNavigate();
   const [heroIndex, setHeroIndex] = useState(0);
@@ -150,12 +165,6 @@ const PublicPage = ({ user, onLogout }) => {
         setCategories(catsRes.data || []);
         setAuthors(authsRes.data || []);
         setReviews(reviewsRes.data || []);
-
-        setNotifications([
-          { id: 1, title: 'Yêu cầu mượn đã duyệt', content: 'Sách "Clean Code" đã sẵn sàng để lấy.', time: '2 giờ trước', read: false, type: 'success' },
-          { id: 2, title: 'Nhắc nhở trả sách', content: 'Bạn có cuốn "Refactoring" sắp đến hạn trả.', time: '1 ngày trước', read: false, type: 'warning' },
-          { id: 3, title: 'Phát sinh khoản phạt', content: 'Đã phát sinh 20.000đ phí quá hạn.', time: '3 ngày trước', read: true, type: 'error' },
-        ]);
 
         if (user) {
           setBorrowHistory([
@@ -231,9 +240,27 @@ const PublicPage = ({ user, onLogout }) => {
     navigate(`/books/${book.book_id}`);
   };
 
+  const handleAuthorClick = (author) => {
+    setSelectedAuthor(author);
+    setCurrentView('authordetail');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   const toggleLike = (id, e) => {
     e.stopPropagation();
-    setLiked(prev => ({ ...prev, [id]: !prev[id] }));
+    setLiked(prev => {
+      const next = { ...prev, [id]: !prev[id] };
+      localStorage.setItem(getStorageKey(), JSON.stringify(next));
+      return next;
+    });
+  };
+
+  const toggleFollowAuthor = (id) => {
+    setFollowedAuthors(prev => {
+      const next = { ...prev, [id]: !prev[id] };
+      localStorage.setItem(`followed_${user?.username || 'guest'}`, JSON.stringify(next));
+      return next;
+    });
   };
 
   const catColors = [
@@ -266,113 +293,10 @@ const PublicPage = ({ user, onLogout }) => {
   const textMut = '#94a3b8';
   const accent = '#6366f1';
 
+
+
   return (
-    <div style={{ minHeight: '100vh', background: bg, color: textPrim, fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
-
-      {/* ══════ NAVBAR ══════ */}
-      <nav style={{ position: 'sticky', top: 0, zIndex: 200, background: 'rgba(248,250,252,0.95)', backdropFilter: 'blur(20px)', borderBottom: `1px solid ${border}`, boxShadow: '0 1px 8px rgba(0,0,0,0.06)' }}>
-        <div className="container" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.9rem 2rem' }}>
-          {/* Logo */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', cursor: 'pointer' }} onClick={() => { setCurrentView('home'); setSearchTerm(''); setSelectedCategory(null); }}>
-            <img src="/logo.svg" alt="OpenLib Logo" style={{ height: '40px', width: 'auto', maxWidth: '160px' }} />
-          </div>
-
-          {/* Nav links */}
-          <div style={{ display: 'flex', gap: '0.25rem', fontSize: '0.92rem' }}>
-            {[
-              { id: 'home', label: 'Trang chủ' },
-              { id: 'library', label: 'Thư viện' },
-              { id: 'about', label: 'Giới thiệu' },
-              { id: 'contact', label: 'Liên hệ' },
-              ...(user ? [{ id: 'mybookshelf', label: 'Tủ sách' }] : []),
-            ].map(item => (
-              <button
-                key={item.id}
-                onClick={() => { setCurrentView(item.id); setSearchTerm(''); setSelectedCategory(null); }}
-                style={{
-                  background: currentView === item.id ? 'rgba(99,102,241,0.1)' : 'transparent',
-                  border: 'none',
-                  color: (currentView === item.id || (item.id === 'home' && currentView === 'profile')) ? accent : textSec,
-                  fontWeight: (currentView === item.id || (item.id === 'home' && currentView === 'profile')) ? 800 : 600,
-                  fontSize: '0.92rem',
-                  cursor: 'pointer',
-                  padding: '0.5rem 1rem',
-                  borderRadius: '8px',
-                  transition: 'all .2s',
-                  position: 'relative',
-                }}
-                onMouseEnter={e => { if (currentView !== item.id) { e.currentTarget.style.background = 'rgba(99,102,241,0.06)'; e.currentTarget.style.color = accent; } }}
-                onMouseLeave={e => { if (currentView !== item.id) { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = textSec; } }}
-              >
-                {item.label}
-                {(currentView === item.id || (item.id === 'home' && currentView === 'profile')) && (
-                  <div style={{ position: 'absolute', bottom: '-1px', left: '50%', transform: 'translateX(-50%)', width: '20px', height: '2px', background: accent, borderRadius: '2px' }} />
-                )}
-              </button>
-            ))}
-          </div>
-
-          {/* Right side actions */}
-          <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-            {user ? (
-               <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                {/* Notification Bell */}
-                <div style={{ position: 'relative' }}>
-                  <button 
-                    onClick={() => setShowNotif(!showNotif)}
-                    style={{ background: 'none', border: 'none', color: textSec, cursor: 'pointer', display: 'flex', position: 'relative', padding: '5px' }}>
-                    <Bell size={22} />
-                    {notifications.some(n => !n.read) && (
-                      <div style={{ position: 'absolute', top: 0, right: 0, width: '10px', height: '10px', background: '#ef4444', borderRadius: '50%', border: '2px solid #fff' }} />
-                    )}
-                  </button>
-                  {showNotif && (
-                    <div style={{ position: 'absolute', top: '100%', right: 0, width: '320px', background: '#fff', boxShadow: '0 10px 25px rgba(0,0,0,0.15)', borderRadius: '1rem', marginTop: '1rem', zIndex: 1000, padding: '1rem', border: `1px solid ${border}` }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem', alignItems: 'center' }}>
-                        <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 800 }}>Thông báo</h4>
-                        <span style={{ fontSize: '0.75rem', color: accent, cursor: 'pointer', fontWeight: 700 }}>Đánh dấu đã đọc</span>
-                      </div>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', maxHeight: '300px', overflowY: 'auto' }}>
-                        {notifications.map(n => (
-                          <div key={n.id} style={{ padding: '0.8rem', borderRadius: '0.8rem', background: n.read ? 'transparent' : '#f8fafc', border: `1px solid ${n.read ? 'transparent' : border}`, cursor: 'pointer' }}>
-                            <div style={{ fontWeight: 800, fontSize: '0.85rem', marginBottom: '0.2rem', color: n.type === 'error' ? '#ef4444' : (n.type === 'warning' ? '#f59e0b' : textPrim) }}>{n.title}</div>
-                            <div style={{ fontSize: '0.8rem', color: textSec, lineHeight: 1.4 }}>{n.content}</div>
-                            <div style={{ fontSize: '0.7rem', color: textMut, marginTop: '0.4rem' }}>{n.time}</div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                <div 
-                  onClick={() => setCurrentView('profile')}
-                  style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', fontSize: '0.9rem', cursor: 'pointer' }}>
-                  <div style={{ width: '34px', height: '34px', borderRadius: '50%', background: `linear-gradient(135deg,${accent},#8b5cf6)`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '0.85rem', color: '#fff' }}>
-                    {(user?.full_name || user?.username || 'U')[0].toUpperCase()}
-                  </div>
-                  <span style={{ fontWeight: 700, color: textPrim, display: 'none' }}>{user?.full_name || user?.username || 'Thành viên'}</span>
-                </div>
-                {(user?.role?.toLowerCase() === 'admin' || user?.role?.toLowerCase() === 'librarian') && (
-                  <button onClick={() => navigate('/admin')} style={{ background: `linear-gradient(135deg,${accent},#8b5cf6)`, color: '#fff', border: 'none', padding: '0.5rem 1.1rem', borderRadius: '50px', fontWeight: 700, fontSize: '0.82rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.4rem', boxShadow: '0 4px 12px rgba(99,102,241,0.3)' }}>
-                    <LayoutDashboard size={14} /> Quản Trị
-                  </button>
-                )}
-                <button onClick={onLogout} style={{ background: surface, border: `1px solid ${border}`, color: textSec, padding: '0.5rem 1.1rem', borderRadius: '50px', cursor: 'pointer', fontSize: '0.82rem', fontWeight: 600 }}>Đăng xuất</button>
-              </div>
-            ) : (
-
-              <>
-                <button onClick={() => navigate('/login')} style={{ background: 'transparent', border: 'none', color: textSec, cursor: 'pointer', fontWeight: 700, fontSize: '0.9rem' }}>Đăng nhập</button>
-                <button onClick={() => navigate('/login')} style={{ background: `linear-gradient(135deg,${accent},#8b5cf6)`, color: '#fff', border: 'none', padding: '0.55rem 1.3rem', borderRadius: '50px', fontSize: '0.88rem', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.4rem', boxShadow: '0 4px 12px rgba(99,102,241,0.3)' }}>
-                  <LogIn size={15} /> Đăng ký
-                </button>
-              </>
-            )}
-          </div>
-        </div>
-      </nav>
-
+    <div style={{ background: bg, color: textPrim, fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
       {/* ══════ BREADCRUMB ══════ */}
       {currentView !== 'home' && (() => {
         const crumbMap = {
@@ -382,6 +306,7 @@ const PublicPage = ({ user, onLogout }) => {
           wishlist:      [{ label: 'Tủ sách', view: 'wishlist' }],
           allcategories: [{ label: 'Chuyên Mục', view: 'allcategories' }],
           allauthors:    [{ label: 'Tác Giả', view: 'allauthors' }],
+          authordetail:  [{ label: 'Tác Giả', view: 'allauthors' }, { label: selectedAuthor?.name || 'Chi tiết', view: 'authordetail' }],
           profile:       [{ label: 'Hồ sơ', view: 'profile' }],
         };
         const crumbs = crumbMap[currentView] || [];
@@ -438,36 +363,44 @@ const PublicPage = ({ user, onLogout }) => {
       {currentView === 'about' && (
         <div>
           {/* Hero */}
-          <section style={{ background: 'linear-gradient(135deg,#ede9fe 0%,#e0e7ff 50%,#faf5ff 100%)', padding: '6rem 2rem 4rem', textAlign: 'center', position: 'relative', overflow: 'hidden' }}>
+          <section style={{ background: 'linear-gradient(135deg,#ede9fe 0%,#e0e7ff 50%,#faf5ff 100%)', padding: '5rem 2rem 4rem', position: 'relative', overflow: 'hidden' }}>
             <div style={{ position: 'absolute', top: '-80px', right: '-80px', width: '400px', height: '400px', borderRadius: '50%', background: 'radial-gradient(circle,rgba(139,92,246,0.15) 0%,transparent 70%)' }} />
-            <div style={{ position: 'relative', zIndex: 1 }}>
-              <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', background: 'rgba(99,102,241,0.1)', border: '1px solid rgba(99,102,241,0.3)', padding: '0.4rem 1.2rem', borderRadius: '50px', color: accent, fontSize: '0.78rem', fontWeight: 800, letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '1.5rem' }}>
-                📖 Về chúng tôi
+            <div style={{ position: 'absolute', bottom: '-60px', left: '-60px', width: '300px', height: '300px', borderRadius: '50%', background: 'radial-gradient(circle,rgba(99,102,241,0.12) 0%,transparent 70%)' }} />
+            <div className="container" style={{ position: 'relative', zIndex: 1, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '3rem', alignItems: 'center', maxWidth: '1200px', margin: '0 auto' }}>
+              <div>
+                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', background: 'rgba(99,102,241,0.1)', border: '1px solid rgba(99,102,241,0.3)', padding: '0.4rem 1.2rem', borderRadius: '50px', color: accent, fontSize: '0.78rem', fontWeight: 800, letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '1.5rem' }}>
+                  📖 Về chúng tôi
+                </div>
+                <h1 style={{ fontSize: 'clamp(2rem,4vw,3rem)', fontWeight: 900, color: textPrim, marginBottom: '1.25rem', lineHeight: 1.2 }}>
+                  Thư viện số dành cho<br />
+                  <span style={{ background: `linear-gradient(135deg,${accent},#8b5cf6)`, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>thế hệ tri thức mới</span>
+                </h1>
+                <p style={{ fontSize: '1.1rem', color: textSec, maxWidth: '500px', lineHeight: 1.75, marginBottom: '2rem' }}>
+                  OpenLib là hệ thống thư viện kỹ thuật số mã nguồn mở, được xây dựng nhằm mục tiêu số hóa, kết nối và phát triển văn hóa đọc trong cộng đồng.
+                </p>
+                <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+                  <button onClick={() => setCurrentView('library')} style={{ background: `linear-gradient(135deg,${accent},#8b5cf6)`, color: '#fff', border: 'none', padding: '0.8rem 2rem', borderRadius: '50px', fontWeight: 800, fontSize: '0.95rem', cursor: 'pointer', boxShadow: '0 8px 24px rgba(99,102,241,0.35)', transition: 'transform .2s' }} onMouseEnter={e => e.currentTarget.style.transform='translateY(-2px)'} onMouseLeave={e => e.currentTarget.style.transform=''}>
+                    Khám phá thư viện →
+                  </button>
+                  <button onClick={() => setCurrentView('contact')} style={{ background: 'rgba(255,255,255,0.8)', color: accent, border: '2px solid rgba(99,102,241,0.3)', padding: '0.8rem 2rem', borderRadius: '50px', fontWeight: 700, fontSize: '0.95rem', cursor: 'pointer', backdropFilter: 'blur(8px)' }}>
+                    Liên hệ chúng tôi
+                  </button>
+                </div>
               </div>
-              <h1 style={{ fontSize: 'clamp(2rem,4vw,3.5rem)', fontWeight: 900, color: textPrim, marginBottom: '1.25rem', lineHeight: 1.15 }}>
-                Thư viện số dành cho<br />
-                <span style={{ color: accent }}>thế hệ tri thức mới</span>
-              </h1>
-              <p style={{ fontSize: '1.15rem', color: textSec, maxWidth: '580px', margin: '0 auto', lineHeight: 1.7 }}>
-                OpenLib là hệ thống thư viện kỹ thuật số mã nguồn mở, được xây dựng nhằm mục tiêu số hóa, kết nối và phát triển văn hóa đọc trong cộng đồng.
-              </p>
+              <div style={{ display: 'flex', justifyContent: 'center' }}>
+                <img src="/about_hero.png" alt="OpenLib" style={{ maxWidth: '100%', maxHeight: '380px', objectFit: 'contain', borderRadius: '1.5rem', animation: 'floatAbout 4s ease-in-out infinite' }} />
+              </div>
             </div>
+            <style>{`@keyframes floatAbout{0%,100%{transform:translateY(0)}50%{transform:translateY(-12px)}}`}</style>
           </section>
 
           {/* Stats */}
-          <section style={{ background: surface, padding: '3rem 2rem', borderBottom: `1px solid ${border}` }}>
-            <div className="container" style={{ display: 'flex', gap: '2rem', justifyContent: 'center', flexWrap: 'wrap' }}>
-              {[
-                { value: books.length + '+', label: 'Đầu sách số hóa', color: '#6366f1' },
-                { value: authors.length + '+', label: 'Tác giả trong hệ thống', color: '#8b5cf6' },
-                { value: categories.length, label: 'Thể loại phong phú', color: '#10b981' },
-                { value: '24/7', label: 'Phục vụ liên tục', color: '#f59e0b' },
-              ].map((s, i) => (
-                <div key={i} style={{ textAlign: 'center', padding: '1.5rem 2.5rem' }}>
-                  <div style={{ fontSize: '2.5rem', fontWeight: 900, color: s.color, marginBottom: '0.3rem' }}>{s.value}</div>
-                  <div style={{ color: textSec, fontSize: '0.9rem', fontWeight: 600 }}>{s.label}</div>
-                </div>
-              ))}
+          <section style={{ background: surface, padding: '3.5rem 2rem', borderBottom: `1px solid ${border}` }}>
+            <div className="container" style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: '1.5rem', maxWidth: '1000px', margin: '0 auto' }}>
+              <StatCard icon={<BookOpen size={24} />} target={books.length} suffix="+" label="Đầu sách số hóa" color="#6366f1" bg="#ede9fe" surface={surface} />
+              <StatCard icon={<PenTool size={24} />} target={authors.length} suffix="+" label="Tác giả trong hệ thống" color="#8b5cf6" bg="#f3e8ff" surface={surface} />
+              <StatCard icon={<Tag size={24} />} target={categories.length} suffix="" label="Thể loại phong phú" color="#10b981" bg="#d1fae5" surface={surface} />
+              <StatCard icon={<Clock size={24} />} target={0} suffix="24/7" label="Phục vụ liên tục" color="#f59e0b" bg="#fef3c7" surface={surface} />
             </div>
           </section>
 
@@ -475,12 +408,12 @@ const PublicPage = ({ user, onLogout }) => {
           <section className="container" style={{ padding: '5rem 2rem' }}>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(300px,1fr))', gap: '2rem' }}>
               {[
-                { icon: '🎯', title: 'Sứ mệnh', color: '#ede9fe', desc: 'Tạo nền tảng học liệu mở, giúp mọi người tiếp cận tri thức một cách dễ dàng và miễn phí. Chúng tôi tin rằng tri thức phải là quyền lợi của tất cả mọi người, không phân biệt hoàn cảnh.' },
-                { icon: '🔭', title: 'Tầm nhìn', color: '#e0e7ff', desc: 'Trở thành nền tảng thư viện số hàng đầu Việt Nam vào năm 2026, phục vụ hàng triệu độc giả với kho tàng sách phong phú và hệ thống quản lý thông minh.' },
-                { icon: '💡', title: 'Giá trị cốt lõi', color: '#fef3c7', desc: 'Minh bạch — Đổi mới — Kết nối. Chúng tôi cam kết xây dựng một cộng đồng đọc sách lành mạnh, nơi tri thức được chia sẻ và trân trọng.' },
+                { icon: '🎯', title: 'Sứ mệnh', color: '#ede9fe', accent: '#6366f1', desc: 'Tạo nền tảng học liệu mở, giúp mọi người tiếp cận tri thức một cách dễ dàng và miễn phí. Chúng tôi tin rằng tri thức phải là quyền lợi của tất cả mọi người, không phân biệt hoàn cảnh.' },
+                { icon: '🔭', title: 'Tầm nhìn', color: '#e0e7ff', accent: '#8b5cf6', desc: 'Trở thành nền tảng thư viện số hàng đầu Việt Nam vào năm 2026, phục vụ hàng triệu độc giả với kho tàng sách phong phú và hệ thống quản lý thông minh.' },
+                { icon: '💡', title: 'Giá trị cốt lõi', color: '#fef3c7', accent: '#f59e0b', desc: 'Minh bạch — Đổi mới — Kết nối. Chúng tôi cam kết xây dựng một cộng đồng đọc sách lành mạnh, nơi tri thức được chia sẻ và trân trọng.' },
               ].map((card, i) => (
-                <div key={i} style={{ background: card.color, borderRadius: '1.5rem', padding: '2.5rem' }}>
-                  <div style={{ fontSize: '2.5rem', marginBottom: '1rem' }}>{card.icon}</div>
+                <div key={i} style={{ background: card.color, borderRadius: '1.5rem', padding: '2.5rem', borderLeft: `5px solid ${card.accent}`, transition: 'transform .25s, box-shadow .25s', cursor: 'default' }} onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-6px)'; e.currentTarget.style.boxShadow = `0 16px 40px ${card.accent}18`; }} onMouseLeave={e => { e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = 'none'; }}>
+                  <div style={{ width: '56px', height: '56px', background: surface, borderRadius: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.75rem', marginBottom: '1.25rem', boxShadow: '0 4px 12px rgba(0,0,0,0.06)' }}>{card.icon}</div>
                   <h3 style={{ fontSize: '1.3rem', fontWeight: 800, color: textPrim, marginBottom: '1rem' }}>{card.title}</h3>
                   <p style={{ color: textSec, lineHeight: 1.7 }}>{card.desc}</p>
                 </div>
@@ -517,24 +450,28 @@ const PublicPage = ({ user, onLogout }) => {
           {/* Team */}
           <section className="container" style={{ padding: '5rem 2rem' }}>
             <div style={{ textAlign: 'center', marginBottom: '3rem' }}>
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', background: 'rgba(99,102,241,0.08)', padding: '0.35rem 1rem', borderRadius: '50px', color: accent, fontSize: '0.75rem', fontWeight: 800, letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: '1rem' }}>👥 Đội ngũ</div>
               <h2 style={{ fontSize: '2rem', fontWeight: 900, color: textPrim, marginBottom: '0.75rem' }}>Đội ngũ phát triển</h2>
-              <p style={{ color: textSec }}>Những người xây dựng OpenLib với niềm đam mê công nghệ và tri thức</p>
+              <p style={{ color: textSec, maxWidth: '500px', margin: '0 auto' }}>Những người xây dựng OpenLib với niềm đam mê công nghệ và tri thức</p>
             </div>
-            <div style={{ display: 'flex', gap: '1.5rem', justifyContent: 'center', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', gap: '2rem', justifyContent: 'center', flexWrap: 'wrap' }}>
               {[
-                { name: 'Trần Đình Hiển', avatar: 'H', color: 'linear-gradient(135deg,#6366f1,#8b5cf6)' },
-                { name: 'Nguyễn Khánh Duy', avatar: 'D', color: 'linear-gradient(135deg,#ec4899,#f43f5e)' },
-                { name: 'Nguyễn Hữu Bảo', avatar: 'B', color: 'linear-gradient(135deg,#10b981,#06b6d4)' },
+                { name: 'Trần Đình Hiển', avatar: 'H', role: 'Backend Developer', color: 'linear-gradient(135deg,#6366f1,#8b5cf6)' },
+                { name: 'Nguyễn Khánh Duy', avatar: 'D', role: 'Frontend Developer', color: 'linear-gradient(135deg,#ec4899,#f43f5e)' },
+                { name: 'Nguyễn Hữu Bảo', avatar: 'B', role: 'Full-stack Developer', color: 'linear-gradient(135deg,#10b981,#06b6d4)' },
               ].map((member, i) => (
-                <div key={i} style={{ background: surface, border: `1px solid ${border}`, borderRadius: '1.5rem', padding: '2rem 1.5rem', textAlign: 'center', width: '200px', boxShadow: '0 4px 16px rgba(0,0,0,0.05)', transition: 'transform .25s, box-shadow .25s' }} onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-6px)'; e.currentTarget.style.boxShadow = '0 12px 30px rgba(99,102,241,0.12)'; }} onMouseLeave={e => { e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,0.05)'; }}>
-                  <div style={{ width: '72px', height: '72px', borderRadius: '50%', background: member.color, margin: '0 auto 1.25rem', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.75rem', fontWeight: 900, color: '#fff', boxShadow: '0 8px 20px rgba(0,0,0,0.14)' }}>
+                <div key={i} style={{ background: surface, border: `1px solid ${border}`, borderRadius: '1.5rem', padding: '2.5rem 2rem', textAlign: 'center', width: '240px', boxShadow: '0 4px 16px rgba(0,0,0,0.05)', transition: 'transform .25s, box-shadow .25s' }} onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-8px)'; e.currentTarget.style.boxShadow = '0 16px 40px rgba(99,102,241,0.15)'; }} onMouseLeave={e => { e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,0.05)'; }}>
+                  <div style={{ width: '80px', height: '80px', borderRadius: '50%', background: member.color, margin: '0 auto 1.25rem', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '2rem', fontWeight: 900, color: '#fff', boxShadow: '0 8px 24px rgba(0,0,0,0.15)' }}>
                     {member.avatar}
                   </div>
-                  <div style={{ fontWeight: 800, fontSize: '1rem', color: textPrim }}>{member.name}</div>
+                  <div style={{ fontWeight: 800, fontSize: '1.05rem', color: textPrim }}>
+                    {member.name}
+                  </div>
                 </div>
               ))}
             </div>
           </section>
+
 
           {/* CTA */}
           <section className="container" style={{ padding: '1rem 2rem 5rem' }}>
@@ -703,46 +640,165 @@ const PublicPage = ({ user, onLogout }) => {
                 ✍️ Tác giả nghệ sĩ
               </div>
               <h1 style={{ fontSize: 'clamp(2rem,4vw,3rem)', fontWeight: 900, color: textPrim, marginBottom: '1.25rem' }}>Đội ngũ Tác giả</h1>
-              <p style={{ fontSize: '1.1rem', color: textSec, maxWidth: '580px', margin: '0 auto' }}>Những người truyền cảm hứng qua từng con chữ. <strong style={{color:'#f43f5e'}}>{authors.length}</strong> tác giả.</p>
+              <p style={{ fontSize: '1.1rem', color: textSec, maxWidth: '580px', margin: '0 auto 2rem' }}>Những người truyền cảm hứng qua từng con chữ. <strong style={{color:'#f43f5e'}}>{authors.length}</strong> tác giả.</p>
+              
+              {/* Author Search Bar */}
+              <div style={{ maxWidth: '500px', margin: '0 auto', position: 'relative' }}>
+                <Search size={20} style={{ position: 'absolute', left: '1.25rem', top: '50%', transform: 'translateY(-50%)', color: textMut }} />
+                <input 
+                  type="text" 
+                  placeholder="Tìm kiếm tác giả theo tên..." 
+                  value={authorSearchTerm}
+                  onChange={(e) => { setAuthorSearchTerm(e.target.value); setAuthorPage(1); }}
+                  style={{ width: '100%', padding: '1rem 1rem 1rem 3.5rem', borderRadius: '50px', border: `1px solid ${border}`, background: surface, fontSize: '1rem', outline: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.05)', transition: 'all .2s' }}
+                  onFocus={e => { e.target.style.borderColor = accent; e.target.style.boxShadow = `0 10px 30px rgba(99,102,241,0.1)`; }}
+                  onBlur={e => { e.target.style.borderColor = border; e.target.style.boxShadow = '0 4px 20px rgba(0,0,0,0.05)'; }}
+                />
+              </div>
             </section>
             <div className="container" style={{ padding: '4rem 2rem' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '2rem', marginBottom: '3rem' }}>
-                {pagedAuthors.map((a, i) => {
-                  const actualIdx = (authorPage - 1) * AUTHORS_PER_PAGE + i;
+              {(() => {
+                const filteredAuthors = authors.filter(a => (a.name || '').toLowerCase().includes(authorSearchTerm.toLowerCase()));
+                const AUTHORS_PER_PAGE = 16;
+                const totalAuthorPages = Math.ceil(filteredAuthors.length / AUTHORS_PER_PAGE);
+                const pagedAuthors = filteredAuthors.slice((authorPage - 1) * AUTHORS_PER_PAGE, authorPage * AUTHORS_PER_PAGE);
+                
+                if (filteredAuthors.length === 0) {
                   return (
-                    <div
-                      key={a.author_id}
-                      onClick={() => { setSearchTerm(a.name); setCurrentView('library'); window.scrollTo({ top:0, behavior: 'auto' }); }}
-                      style={{ background: surface, border: `1px solid ${border}`, borderRadius: '2rem', padding: '2.5rem 1.5rem', textAlign: 'center', cursor: 'pointer', transition: 'all 0.3s', boxShadow: '0 4px 15px rgba(0,0,0,0.04)' }}
-                      onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-10px)'; e.currentTarget.style.borderColor = accent; e.currentTarget.style.boxShadow = '0 20px 40px rgba(99,102,241,0.12)'; }}
-                      onMouseLeave={e => { e.currentTarget.style.transform = ''; e.currentTarget.style.borderColor = border; e.currentTarget.style.boxShadow = '0 4px 15px rgba(0,0,0,0.04)'; }}
-                    >
-                      <div style={{ width: '80px', height: '80px', borderRadius: '50%', background: catColors[actualIdx % catColors.length], margin: '0 auto 1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '2rem', fontWeight: 900, color: '#000', boxShadow: '0 8px 20px rgba(0,0,0,0.1)' }}>
-                        {a.name[0]}
-                      </div>
-                      <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: textPrim, marginBottom: '0.4rem' }}>{a.name}</h3>
-                      <div style={{ color: textMut, fontSize: '0.85rem' }}>{books.filter(b => b.author_name === a.name).length} tác phẩm</div>
+                    <div style={{ textAlign: 'center', padding: '5rem 0' }}>
+                      <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🔍</div>
+                      <h3 style={{ color: textPrim }}>Không tìm thấy tác giả nào</h3>
+                      <p style={{ color: textMut }}>Hãy thử với từ khóa khác.</p>
                     </div>
                   );
-                })}
-              </div>
-              {(
-                <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-                  <button onClick={() => { setAuthorPage(p => Math.max(p-1,1)); window.scrollTo({top:0,behavior:'smooth'}); }} disabled={authorPage===1} style={{ padding: '0.6rem 1.2rem', borderRadius: '10px', border: `1px solid ${border}`, background: authorPage===1?'#f1f5f9':surface, color: authorPage===1?textMut:textPrim, cursor: authorPage===1?'not-allowed':'pointer', fontWeight: 700, display:'flex', alignItems:'center', gap:'0.3rem' }}>
-                    <ChevronRight size={16} style={{transform:'rotate(180deg)'}}/> Trước
-                  </button>
-                  {Array.from({length:totalAuthorPages},(_,i)=>i+1).map(p=>(
-                    <button key={p} onClick={()=>{setAuthorPage(p);window.scrollTo({top:0,behavior:'smooth'});}} style={{ width:'40px',height:'40px',borderRadius:'10px',border:`1px solid ${authorPage===p?'transparent':border}`,background:authorPage===p?`linear-gradient(135deg,#f43f5e,#ec4899)`:surface,color:authorPage===p?'#fff':textPrim,fontWeight:800,cursor:'pointer',boxShadow:authorPage===p?'0 4px 12px rgba(244,63,94,0.3)':'none',transition:'all 0.2s' }}>{p}</button>
-                  ))}
-                  <button onClick={() => { setAuthorPage(p => Math.min(p+1,totalAuthorPages)); window.scrollTo({top:0,behavior:'smooth'}); }} disabled={authorPage===totalAuthorPages} style={{ padding: '0.6rem 1.2rem', borderRadius: '10px', border: `1px solid ${border}`, background: authorPage===totalAuthorPages?'#f1f5f9':surface, color: authorPage===totalAuthorPages?textMut:textPrim, cursor: authorPage===totalAuthorPages?'not-allowed':'pointer', fontWeight: 700, display:'flex', alignItems:'center', gap:'0.3rem' }}>
-                    Tiếp <ChevronRight size={16}/>
-                  </button>
-                </div>
-              )}
+                }
+
+                return (
+                  <>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '2rem', marginBottom: '3rem' }}>
+                      {pagedAuthors.map((a, i) => {
+                        const actualIdx = (authorPage - 1) * AUTHORS_PER_PAGE + i;
+                        return (
+                          <div
+                            key={a.author_id}
+                            onClick={() => handleAuthorClick(a)}
+                            style={{ background: surface, border: `1px solid ${border}`, borderRadius: '2rem', padding: '2.5rem 1.5rem', textAlign: 'center', cursor: 'pointer', transition: 'all 0.3s', boxShadow: '0 4px 15px rgba(0,0,0,0.04)' }}
+                            onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-10px)'; e.currentTarget.style.borderColor = accent; e.currentTarget.style.boxShadow = '0 20px 40px rgba(99,102,241,0.12)'; }}
+                            onMouseLeave={e => { e.currentTarget.style.transform = ''; e.currentTarget.style.borderColor = border; e.currentTarget.style.boxShadow = '0 4px 15px rgba(0,0,0,0.04)'; }}
+                          >
+                            <div style={{ width: '80px', height: '80px', borderRadius: '50%', background: catColors[actualIdx % catColors.length], margin: '0 auto 1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '2rem', fontWeight: 900, color: '#fff', boxShadow: '0 8px 20px rgba(0,0,0,0.1)', overflow: 'hidden' }}>
+                              {a.image ? (
+                                <img src={getImageUrl(a.image)} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt={a.name} />
+                              ) : (
+                                a.name[0]
+                              )}
+                            </div>
+                            <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: textPrim, marginBottom: '0.4rem' }}>{a.name}</h3>
+                            <div style={{ color: textMut, fontSize: '0.85rem' }}>{books.filter(b => b.author_name === a.name).length} tác phẩm</div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    {totalAuthorPages > 1 && (
+                      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                        <button onClick={() => { setAuthorPage(p => Math.max(p-1,1)); window.scrollTo({top:0,behavior:'smooth'}); }} disabled={authorPage===1} style={{ padding: '0.6rem 1.2rem', borderRadius: '10px', border: `1px solid ${border}`, background: authorPage===1?'#f1f5f9':surface, color: authorPage===1?textMut:textPrim, cursor: authorPage===1?'not-allowed':'pointer', fontWeight: 700, display:'flex', alignItems:'center', gap:'0.3rem' }}>
+                          <ChevronRight size={16} style={{transform:'rotate(180deg)'}}/> Trước
+                        </button>
+                        {Array.from({length:totalAuthorPages},(_,i)=>i+1).map(p=>(
+                          <button key={p} onClick={()=>{setAuthorPage(p);window.scrollTo({top:0,behavior:'smooth'});}} style={{ width:'40px',height:'40px',borderRadius:'10px',border:`1px solid ${authorPage===p?'transparent':border}`,background:authorPage===p?`linear-gradient(135deg,#f43f5e,#ec4899)`:surface,color:authorPage===p?'#fff':textPrim,fontWeight:800,cursor:'pointer',boxShadow:authorPage===p?'0 4px 12px rgba(244,63,94,0.3)':'none',transition:'all 0.2s' }}>{p}</button>
+                        ))}
+                        <button onClick={() => { setAuthorPage(p => Math.min(p+1,totalAuthorPages)); window.scrollTo({top:0,behavior:'smooth'}); }} disabled={authorPage===totalAuthorPages} style={{ padding: '0.6rem 1.2rem', borderRadius: '10px', border: `1px solid ${border}`, background: authorPage===totalAuthorPages?'#f1f5f9':surface, color: authorPage===totalAuthorPages?textMut:textPrim, cursor: authorPage===totalAuthorPages?'not-allowed':'pointer', fontWeight: 700, display:'flex', alignItems:'center', gap:'0.3rem' }}>
+                          Tiếp <ChevronRight size={16}/>
+                        </button>
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
             </div>
           </div>
         );
       })()}
+
+      {/* ══════ AUTHOR DETAIL VIEW ══════ */}
+      {currentView === 'authordetail' && selectedAuthor && (
+        <div style={{ minHeight: '80vh' }}>
+          {/* Header Section */}
+          <section style={{ background: 'linear-gradient(135deg,#f8fafc 0%,#f1f5f9 100%)', padding: '5rem 2rem 4rem', borderBottom: `1px solid ${border}` }}>
+            <div className="container" style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '3.5rem', alignItems: 'center' }}>
+              <div style={{ width: '220px', height: '220px', borderRadius: '40px', background: `linear-gradient(135deg,${accent},#8b5cf6)`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '5rem', fontWeight: 900, color: '#fff', boxShadow: '0 20px 50px rgba(99,102,241,0.25)', overflow: 'hidden' }}>
+                {selectedAuthor.image ? (
+                  <img src={getImageUrl(selectedAuthor.image)} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt={selectedAuthor.name} />
+                ) : (
+                  selectedAuthor.name[0]
+                )}
+              </div>
+              <div>
+                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', background: 'rgba(99,102,241,0.1)', border: '1px solid rgba(99,102,241,0.3)', padding: '0.4rem 1.2rem', borderRadius: '50px', color: accent, fontSize: '0.78rem', fontWeight: 800, letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '1.25rem' }}>
+                  ✍️ Hồ sơ tác giả
+                </div>
+                <h1 style={{ fontSize: '3.5rem', fontWeight: 900, color: textPrim, marginBottom: '0.5rem', letterSpacing: '-0.03em' }}>{selectedAuthor.name}</h1>
+                <div style={{ fontSize: '1.1rem', color: textSec, fontWeight: 600, display: 'flex', alignItems: 'center', gap: '1.5rem', marginBottom: '2rem' }}>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                    <BookOpen size={18} color={accent} /> {books.filter(b => b.author_name === selectedAuthor.name).length} Tác phẩm
+                  </span>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                    <Users size={18} color="#10b981" /> {followedAuthors[selectedAuthor.author_id] ? 1201 : 1200} Độc giả quan tâm
+                  </span>
+                </div>
+                <button 
+                  onClick={() => toggleFollowAuthor(selectedAuthor.author_id)}
+                  style={{ background: followedAuthors[selectedAuthor.author_id] ? 'rgba(99,102,241,0.1)' : `linear-gradient(135deg,${accent},#8b5cf6)`, color: followedAuthors[selectedAuthor.author_id] ? accent : '#fff', border: followedAuthors[selectedAuthor.author_id] ? `2px solid ${accent}` : 'none', padding: '0.8rem 2.5rem', borderRadius: '50px', fontWeight: 800, fontSize: '1rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.6rem', boxShadow: followedAuthors[selectedAuthor.author_id] ? 'none' : '0 10px 25px rgba(99,102,241,0.3)', transition: 'all .25s' }}
+                >
+                  {followedAuthors[selectedAuthor.author_id] ? '✓ Đang quan tâm' : '+ Quan tâm tác giả'}
+                </button>
+              </div>
+            </div>
+          </section>
+
+          {/* Content Section */}
+          <div className="container" style={{ padding: '4rem 2rem', display: 'grid', gridTemplateColumns: '1fr 340px', gap: '4rem' }}>
+            {/* Bio */}
+            <div>
+              <h3 style={{ fontSize: '1.5rem', fontWeight: 800, color: textPrim, marginBottom: '2rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                <div style={{ width: '4px', height: '24px', background: accent, borderRadius: '4px' }}></div>
+                Tiểu sử & Sự nghiệp
+              </h3>
+              <div 
+                className="rich-text-content"
+                style={{ fontSize: '1.1rem', color: textSec, lineHeight: 1.8, textAlign: 'left' }}
+                dangerouslySetInnerHTML={{ 
+                  __html: (selectedAuthor.bio || '<p>Thông tin về tác giả này đang được cập nhật...</p>').replace(/&nbsp;/g, ' ').replace(/\u00a0/g, ' ') 
+                }} 
+              />
+              <style>{`
+                .rich-text-content p { margin-bottom: 1.5rem; }
+                .rich-text-content p:last-child { margin-bottom: 0; }
+                .rich-text-content img { max-width: 100%; height: auto; border-radius: 12px; margin: 1.5rem 0; }
+              `}</style>
+            </div>
+
+            {/* Books Sidebar */}
+            <div>
+              <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: textPrim, marginBottom: '1.5rem' }}>Tác phẩm nổi bật</h3>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                {books.filter(b => b.author_name === selectedAuthor.name).slice(0, 5).map(book => (
+                  <div key={book.book_id} onClick={() => handleViewDetail(book)} style={{ display: 'flex', gap: '1rem', cursor: 'pointer' }}>
+                    <div style={{ width: '70px', height: '90px', borderRadius: '10px', overflow: 'hidden', flexShrink: 0, boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}>
+                      <img src={getImageUrl(book.image)} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt={book.title} />
+                    </div>
+                    <div>
+                      <h4 style={{ fontSize: '0.95rem', fontWeight: 800, color: textPrim, marginBottom: '0.25rem' }}>{book.title}</h4>
+                      <div style={{ fontSize: '0.8rem', color: textMut }}>{book.category_name}</div>
+                      <div style={{ fontSize: '0.85rem', fontWeight: 700, color: accent, marginTop: '0.5rem' }}>Xem chi tiết →</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
 
       {/* ══════ PROFILE VIEW ══════ */}
@@ -930,7 +986,7 @@ const PublicPage = ({ user, onLogout }) => {
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3rem', flex: '0 0 auto' }}>
               {/* Book cover 3D */}
               <div onClick={() => handleViewDetail(featured)} style={{ width: '280px', height: '390px', borderRadius: '1rem', overflow: 'hidden', boxShadow: '0 30px 60px rgba(99,102,241,0.25), 0 0 0 1px rgba(99,102,241,0.1)', cursor: 'pointer', transform: 'perspective(900px) rotateY(-12deg) rotateX(3deg)', transition: 'transform 0.5s' }} onMouseEnter={e => e.currentTarget.style.transform = 'perspective(900px) rotateY(0deg) rotateX(0deg) scale(1.04)'} onMouseLeave={e => e.currentTarget.style.transform = 'perspective(900px) rotateY(-12deg) rotateX(3deg)'}>
-                {featured.image ? <img src={featured.image} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt={featured.title} /> : <div style={{ height: '100%', background: 'linear-gradient(135deg,#e0e7ff,#f3e8ff)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><BookOpen size={64} color={accent} opacity={0.4} /></div>}
+                {featured.image ? <img src={getImageUrl(featured.image)} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt={featured.title} /> : <div style={{ height: '100%', background: 'linear-gradient(135deg,#e0e7ff,#f3e8ff)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><BookOpen size={64} color={accent} opacity={0.4} /></div>}
               </div>
 
               {/* MINIMALIST PROGRESS SLIDER */}
@@ -1188,6 +1244,8 @@ const PublicPage = ({ user, onLogout }) => {
           </div>
         )}
       </main>
+      </div>
+    )}
 
       {/* ══════ AUTHORS SECTION ══════ */}
       {!searchTerm && !loading && authors.length > 0 && currentView === 'home' && (
@@ -1208,11 +1266,15 @@ const PublicPage = ({ user, onLogout }) => {
               {authors.map((a, i) => {
                 const byCnt = books.filter(b => b.author_name === a.name).length;
                 return (
-                  <div key={a.author_id} style={{ minWidth: '170px', background: bg, border: `1px solid ${border}`, borderRadius: '1.25rem', padding: '1.5rem 1rem', textAlign: 'center', cursor: 'pointer', transition: 'transform .25s, border-color .25s, box-shadow .25s', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }} onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-6px)'; e.currentTarget.style.borderColor = accent; e.currentTarget.style.boxShadow = `0 12px 30px rgba(99,102,241,0.15)`; }} onMouseLeave={e => { e.currentTarget.style.transform = ''; e.currentTarget.style.borderColor = border; e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.05)'; }}>
-                    <div style={{ width: '64px', height: '64px', borderRadius: '50%', background: catColors[i % catColors.length], margin: '0 auto 1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.4rem', fontWeight: 900, color: '#000', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}>
-                      {a.name[0]}
+                  <div key={a.author_id} onClick={() => handleAuthorClick(a)} style={{ minWidth: '170px', background: bg, border: `1px solid ${border}`, borderRadius: '1.25rem', padding: '1.5rem 1rem', textAlign: 'center', cursor: 'pointer', transition: 'transform .25s, border-color .25s, box-shadow .25s', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }} onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-6px)'; e.currentTarget.style.borderColor = accent; e.currentTarget.style.boxShadow = `0 12px 30px rgba(99,102,241,0.15)`; }} onMouseLeave={e => { e.currentTarget.style.transform = ''; e.currentTarget.style.borderColor = border; e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.05)'; }}>
+                    <div style={{ width: '64px', height: '64px', borderRadius: '50%', background: catColors[i % catColors.length], margin: '0 auto 1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.4rem', fontWeight: 900, color: '#fff', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', overflow: 'hidden' }}>
+                      {a.image ? (
+                        <img src={getImageUrl(a.image)} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt={a.name || 'Author'} />
+                      ) : (
+                        (a.name || '?').charAt(0).toUpperCase()
+                      )}
                     </div>
-                    <div style={{ fontWeight: 700, fontSize: '0.95rem', marginBottom: '0.3rem', color: textPrim }}>{a.name}</div>
+                    <div style={{ fontWeight: 700, fontSize: '0.95rem', marginBottom: '0.3rem', color: textPrim }}>{a.name || 'Chưa cập nhật'}</div>
                     <div style={{ fontSize: '0.78rem', color: textMut }}>{byCnt} tác phẩm</div>
                   </div>
                 );
@@ -1271,49 +1333,7 @@ const PublicPage = ({ user, onLogout }) => {
       )}
 
       </div>
-      )}
-
-      {/* ══════ FOOTER ══════ */}
-      <footer style={{ background: '#1e293b', color: '#94a3b8', padding: '3rem 2rem 2rem' }}>
-        <div className="container">
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '2.5rem', marginBottom: '2.5rem' }}>
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '1rem', fontSize: '1.3rem', fontWeight: 900, color: '#fff' }}>
-                <div style={{ width: '10px', height: '10px', background: accent, borderRadius: '50%', boxShadow: `0 0 8px ${accent}` }} />
-                OpenLib
-              </div>
-              <p style={{ color: '#64748b', lineHeight: 1.6, fontSize: '0.88rem', maxWidth: '260px' }}>Hệ thống quản lý thư viện mã nguồn mở — xây dựng trên React & Django REST Framework.</p>
-            </div>
-            <div>
-              <h4 style={{ fontWeight: 800, marginBottom: '1rem', fontSize: '0.95rem', color: '#fff' }}>Khám Phá</h4>
-              {['Sách mới nhất', 'Sách nổi bật', 'Tác giả', 'Thể loại'].map(t => (
-                <div key={t} style={{ color: '#64748b', marginBottom: '0.6rem', fontSize: '0.88rem', cursor: 'pointer', transition: 'color .2s' }} onMouseEnter={e => e.target.style.color = '#fff'} onMouseLeave={e => e.target.style.color = '#64748b'}>{t}</div>
-              ))}
-            </div>
-            <div>
-              <h4 style={{ fontWeight: 800, marginBottom: '1rem', fontSize: '0.95rem', color: '#fff' }}>Hỗ Trợ</h4>
-              {['Hướng dẫn sử dụng', 'Nội quy mượn trả', 'Liên hệ thủ thư', 'Báo lỗi hệ thống'].map(t => (
-                <div key={t} style={{ color: '#64748b', marginBottom: '0.6rem', fontSize: '0.88rem', cursor: 'pointer', transition: 'color .2s' }} onMouseEnter={e => e.target.style.color = '#fff'} onMouseLeave={e => e.target.style.color = '#64748b'}>{t}</div>
-              ))}
-            </div>
-            <div>
-              <h4 style={{ fontWeight: 800, marginBottom: '1rem', fontSize: '0.95rem', color: '#fff' }}>Thông Tin</h4>
-              <div style={{ color: '#64748b', fontSize: '0.85rem', lineHeight: 2 }}>
-                <div>📍 Thư viện OpenLib</div>
-                <div>📧 admin@openlib.edu.vn</div>
-                <div>📞 (028) 1234 5678</div>
-                <div>⏰ T2–T7: 7:30 – 17:00</div>
-              </div>
-            </div>
-          </div>
-          <div style={{ borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: '1.5rem', textAlign: 'center', color: '#475569', fontSize: '0.82rem' }}>
-            © 2026 Đồ án môn học · Hệ thống Quản lý Thư viện bằng phần mềm Mã nguồn mở · React + Django
-          </div>
-        </div>
-      </footer>
-
-    </div>
-  );
+    );
 };
 
 export default PublicPage;

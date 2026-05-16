@@ -103,10 +103,14 @@ const Layout = ({ children, user, onLogout }) => {
         </nav>
 
         <div className="sidebar-footer">
-           <div className="nav-item">
-              <Settings size={18} />
-              <span>Thiết lập</span>
-           </div>
+            <Link 
+              to="/admin/settings" 
+              className={`nav-item ${location.pathname === '/admin/settings' ? 'active' : ''}`}
+              style={{ textDecoration: 'none' }}
+            >
+               <Settings size={18} />
+               <span>Thiết lập</span>
+            </Link>
            <div className="nav-item sign-out" style={{ color: '#ef4444' }} onClick={onLogout}>
               <LogOut size={18} />
               <span>Đăng xuất</span>
@@ -156,9 +160,9 @@ const Layout = ({ children, user, onLogout }) => {
         <footer className="modern-footer">
            <div className="footer-grid">
               <div className="footer-col">
-                 <div className="footer-brand">
-                    <div className="brand-dot"></div>
-                    <span>OpenLib <strong>Admin</strong></span>
+                 <div className="footer-brand" style={{ display: 'flex', alignItems: 'center' }}>
+                    <img src="/logo.svg" alt="OpenLib Logo" style={{ height: '32px', width: 'auto' }} />
+                    <span style={{ marginLeft: '0.5rem' }}><strong>Admin</strong></span>
                   </div>
                   <p className="brand-desc">Hệ thống quản trị thư viện hiện đại, mang lại trải nghiệm tối ưu cho cả quản lý và độc giả.</p>
               </div>
@@ -186,7 +190,11 @@ const Layout = ({ children, user, onLogout }) => {
            </div>
 
            <div className="footer-bottom">
-              <p>© 2026 <strong>OpenLib</strong>. Professional Library Management.</p>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', justifyContent: 'center' }}>
+                <span>© 2026</span>
+                <img src="/logo.svg" alt="OpenLib Logo" style={{ height: '20px', width: 'auto' }} />
+                <span>. Professional Library Management.</span>
+              </div>
               <div className="footer-badges">
                  <span className="v-badge primary">v2.1.2 Stable</span>
               </div>

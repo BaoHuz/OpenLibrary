@@ -17,6 +17,8 @@ class PublisherSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 class ReviewSerializer(serializers.ModelSerializer):
+    user_name = serializers.ReadOnlyField(source='user.full_name')
+    user_username = serializers.ReadOnlyField(source='user.username')
     class Meta:
         model = Reviews
         fields = '__all__'
@@ -27,13 +29,27 @@ class FineSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 class UserSerializer(serializers.ModelSerializer):
+    password = serializers.CharField(write_only=True, required=True)
+
     class Meta:
         model = Users
-        fields = ['user_id', 'username', 'full_name', 'email', 'role', 'is_active']
+        fields = ['user_id', 'username', 'password', 'full_name', 'email', 'role', 'is_active', 'created_at']
+        extra_kwargs = {
+            'is_active': {'default': True}
+        }
+
+    def create(self, validated_data):
+        from django.contrib.auth.hashers import make_password
+        password = validated_data.pop('password')
+        validated_data['password_hash'] = make_password(password)
+        if 'is_active' not in validated_data:
+            validated_data['is_active'] = True
+        return super().create(validated_data)
 
 class BookSerializer(serializers.ModelSerializer):
     author_name = serializers.ReadOnlyField(source='author.name')
     category_name = serializers.ReadOnlyField(source='category.name')
+    publisher_name = serializers.ReadOnlyField(source='publisher.name')
     class Meta:
         model = Books
         fields = '__all__'

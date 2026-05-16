@@ -8,6 +8,8 @@ import DetailPage from './DetailPage';
 import AddPage from './AddPage';
 import PublicPage from './PublicPage';
 import BookDetailPage from './BookDetailPage';
+import PublicLayout from './PublicLayout';
+import SettingsPage from './SettingsPage';
 import './App.css';
 
 function App() {
@@ -60,8 +62,10 @@ function App() {
     <Router>
       <Routes>
         {/* PUBLIC ROUTES */}
-        <Route path="/" element={<PublicPage user={currentUser} onLogout={handleLogout} />} />
-        <Route path="/books/:bookId" element={<BookDetailPage user={currentUser} />} />
+        <Route element={<PublicLayout user={currentUser} onLogout={handleLogout} />}>
+          <Route path="/" element={<PublicPage user={currentUser} onLogout={handleLogout} />} />
+          <Route path="/books/:bookId" element={<BookDetailPage user={currentUser} />} />
+        </Route>
         
         {/* LOGIN / REGISTER Toggled Screen */}
         <Route path="/login" element={isAuth ? <Navigate to="/" /> : <Login onLoginSuccess={handleLoginSuccess} />} />
@@ -86,6 +90,7 @@ function App() {
                 <Route path=":type/detail/:id" element={<DetailPage />} />
                 <Route path=":type/edit/:id" element={<EditPage />} />
                 <Route path=":type/add" element={<AddPage />} />
+                <Route path="settings" element={<SettingsPage />} />
                 <Route path="*" element={<Navigate to="/admin" />} />
               </Routes>
             </Layout>

@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useOutletContext } from 'react-router-dom';
 import axios from 'axios';
 import {
   ArrowLeft, BookOpen, Star, BookMarked, Heart, Share2, PenTool,
   Building2, Hash, Tag, Package, ChevronRight, Quote, Send,
   ThumbsUp, Clock, Award, TrendingUp, Eye
 } from 'lucide-react';
+import { getImageUrl } from './utils/imageUrl';
 import './App.css';
 
 const API = 'http://127.0.0.1:8000/api';
@@ -53,7 +54,7 @@ const RelatedCard = ({ book, avgRating, onClick }) => (
   >
     <div style={{ height: '200px', background: 'linear-gradient(135deg,#e0e7ff,#f3e8ff)', position: 'relative', overflow: 'hidden' }}>
       {book.image
-        ? <img src={book.image} alt={book.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+        ? <img src={getImageUrl(book.image)} alt={book.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
         : <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><BookOpen size={40} color="rgba(99,102,241,0.3)" /></div>
       }
       <div style={{
@@ -76,6 +77,7 @@ const RelatedCard = ({ book, avgRating, onClick }) => (
 
 /* ════════════════ MAIN PAGE ════════════════ */
 const BookDetailPage = ({ user }) => {
+  const { setCurrentView } = useOutletContext();
   const { bookId } = useParams();
   const navigate = useNavigate();
 
@@ -88,6 +90,7 @@ const BookDetailPage = ({ user }) => {
   const [comment, setComment] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [submitMsg, setSubmitMsg] = useState('');
+  const [reviewFilter, setReviewFilter] = useState(0); // 0 means all
 
   const getStorageKey = () => user ? `liked_${user.username}` : 'liked_guest';
   const [liked, setLiked] = useState(() => {
@@ -156,6 +159,8 @@ const BookDetailPage = ({ user }) => {
   }, [bookId]);
 
   const bookReviews = reviews.filter(r => r.book === parseInt(bookId));
+  const filteredReviews = reviewFilter === 0 ? bookReviews : bookReviews.filter(r => r.rating === reviewFilter);
+  const userHasReviewed = user && bookReviews.some(r => r.user === user.user_id || r.user === user.id || r.user_username === user.username);
   const avgRating = bookReviews.length
     ? Math.round(bookReviews.reduce((s, r) => s + r.rating, 0) / bookReviews.length * 10) / 10
     : 0;
@@ -206,6 +211,7 @@ const BookDetailPage = ({ user }) => {
 
   const handleSubmitReview = async () => {
     if (!user) { navigate('/login'); return; }
+    if (userHasReviewed) { setSubmitMsg('⚠️ Bạn đã đánh giá sách này rồi.'); return; }
     if (!userRating) { setSubmitMsg('⚠️ Vui lòng chọn số sao đánh giá.'); return; }
     if (!comment.trim()) { setSubmitMsg('⚠️ Vui lòng nhập nhận xét.'); return; }
     setSubmitting(true);
@@ -215,6 +221,7 @@ const BookDetailPage = ({ user }) => {
         book: parseInt(bookId),
         rating: userRating,
         comment: comment.trim(),
+        user: user.user_id || user.id,
       }, {
         headers: { Authorization: `Token ${token}` },
       });
@@ -263,24 +270,19 @@ const BookDetailPage = ({ user }) => {
   return (
     <div style={{ minHeight: '100vh', background: C.bg, color: C.textPrim, fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
 
-      {/* ── Sticky Navbar ── */}
-      <nav style={{ position: 'sticky', top: 0, zIndex: 200, background: 'rgba(248,250,252,0.95)', backdropFilter: 'blur(20px)', borderBottom: `1px solid ${C.border}`, boxShadow: '0 1px 8px rgba(0,0,0,0.06)' }}>
-        <div style={{ maxWidth: '1280px', margin: '0 auto', padding: '0.9rem 2rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
-          <button onClick={() => navigate('/')} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: C.bg, border: `1px solid ${C.border}`, color: C.textSec, padding: '0.5rem 1rem', borderRadius: '50px', cursor: 'pointer', fontWeight: 600, fontSize: '0.875rem', transition: 'all .2s' }} onMouseEnter={e => { e.currentTarget.style.borderColor = C.accent; e.currentTarget.style.color = C.accent; }} onMouseLeave={e => { e.currentTarget.style.borderColor = C.border; e.currentTarget.style.color = C.textSec; }}>
-            <ArrowLeft size={16} /> Quay lại
+      {/* ── Breadcrumb ── */}
+      <div style={{ background: C.surface, borderBottom: `1px solid ${C.border}`, padding: '0.75rem 2rem' }}>
+        <div style={{ maxWidth: '1280px', margin: '0 auto', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', fontWeight: 600 }}>
+          <button onClick={() => navigate(-1)} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: C.bg, border: `1px solid ${C.border}`, color: C.textSec, padding: '0.4rem 0.8rem', borderRadius: '50px', cursor: 'pointer', fontWeight: 600, fontSize: '0.8rem', transition: 'all .2s', marginRight: '1rem' }} onMouseEnter={e => { e.currentTarget.style.borderColor = C.accent; e.currentTarget.style.color = C.accent; }} onMouseLeave={e => { e.currentTarget.style.borderColor = C.border; e.currentTarget.style.color = C.textSec; }}>
+            <ArrowLeft size={14} /> Quay lại
           </button>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.82rem', color: C.textMut }}>
-            <span style={{ cursor: 'pointer', color: C.accent, fontWeight: 700 }} onClick={() => navigate('/')}>Trang chủ</span>
-            <ChevronRight size={14} />
-            <span style={{ cursor: 'pointer', color: C.accent, fontWeight: 700 }} onClick={() => navigate('/')}>Thư viện</span>
-            <ChevronRight size={14} />
-            <span style={{ fontWeight: 600, color: C.textPrim, maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{book.title}</span>
-          </div>
-          <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '0.6rem', cursor: 'pointer' }} onClick={() => navigate('/')}>
-            <img src="/logo.svg" alt="OpenLib Logo" style={{ height: '36px', width: 'auto', maxWidth: '144px' }} />
-          </div>
+          <span onClick={() => navigate('/')} style={{ color: C.accent, cursor: 'pointer' }}>🏠 Trang chủ</span>
+          <ChevronRight size={14} color={C.textMut} />
+          <span onClick={() => { setCurrentView('library'); navigate('/'); }} style={{ color: C.accent, cursor: 'pointer' }}>Thư viện</span>
+          <ChevronRight size={14} color={C.textMut} />
+          <span style={{ color: C.textPrim, fontWeight: 800 }}>{book.title}</span>
         </div>
-      </nav>
+      </div>
 
       {/* ══════════════════════════════════════
           HERO — Book Overview
@@ -292,7 +294,7 @@ const BookDetailPage = ({ user }) => {
           <div style={{ flex: '0 0 auto' }}>
             <div style={{ width: '260px', height: '370px', borderRadius: '1.25rem', overflow: 'hidden', boxShadow: '0 24px 48px rgba(99,102,241,0.2), 0 0 0 1px rgba(99,102,241,0.08)', position: 'relative' }}>
               {book.image
-                ? <img src={book.image} alt={book.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                ? <img src={getImageUrl(book.image)} alt={book.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                 : <div style={{ height: '100%', background: 'linear-gradient(135deg,#c7d2fe,#ddd6fe)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <BookOpen size={72} color="rgba(99,102,241,0.35)" />
                   </div>
@@ -441,14 +443,40 @@ const BookDetailPage = ({ user }) => {
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '3rem', alignItems: 'start' }}>
           {/* Review list */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+            
+            {/* Filter UI */}
+            {bookReviews.length > 0 && (
+              <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem', flexWrap: 'wrap' }}>
+                <button
+                  onClick={() => setReviewFilter(0)}
+                  style={{ padding: '0.4rem 1rem', borderRadius: '50px', fontSize: '0.8rem', fontWeight: 700, cursor: 'pointer', border: reviewFilter === 0 ? `1px solid ${C.accent}` : `1px solid ${C.border}`, background: reviewFilter === 0 ? 'rgba(99,102,241,0.1)' : C.surface, color: reviewFilter === 0 ? C.accent : C.textSec }}
+                >
+                  Tất cả
+                </button>
+                {[5, 4, 3, 2, 1].map(star => (
+                  <button
+                    key={star}
+                    onClick={() => setReviewFilter(star)}
+                    style={{ padding: '0.4rem 1rem', borderRadius: '50px', fontSize: '0.8rem', fontWeight: 700, cursor: 'pointer', border: reviewFilter === star ? `1px solid #f59e0b` : `1px solid ${C.border}`, background: reviewFilter === star ? '#fffbeb' : C.surface, color: reviewFilter === star ? '#d97706' : C.textSec, display: 'flex', alignItems: 'center', gap: '0.2rem' }}
+                  >
+                    {star} <Star size={12} fill={reviewFilter === star ? '#d97706' : C.textMut} color={reviewFilter === star ? '#d97706' : C.textMut} />
+                  </button>
+                ))}
+              </div>
+            )}
+
             {bookReviews.length === 0 ? (
               <div style={{ textAlign: 'center', padding: '3rem', background: C.surface, borderRadius: '1.25rem', border: `1px dashed ${C.border}` }}>
                 <div style={{ fontSize: '2.5rem', marginBottom: '0.75rem' }}>💬</div>
                 <h3 style={{ color: C.textPrim, marginBottom: '0.5rem', fontSize: '1rem' }}>Chưa có đánh giá nào</h3>
                 <p style={{ color: C.textMut, fontSize: '0.875rem' }}>Hãy là người đầu tiên chia sẻ cảm nhận về cuốn sách này!</p>
               </div>
+            ) : filteredReviews.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '2rem', background: C.surface, borderRadius: '1.25rem', border: `1px solid ${C.border}` }}>
+                <p style={{ color: C.textSec }}>Không có đánh giá {reviewFilter} sao nào.</p>
+              </div>
             ) : (
-              bookReviews.map((rev, i) => (
+              filteredReviews.map((rev, i) => (
                 <div key={i} style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: '1.25rem', padding: '1.5rem', position: 'relative', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>
                   <Quote size={32} color={C.accent} style={{ position: 'absolute', top: '1rem', right: '1rem', opacity: 0.08 }} />
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
@@ -456,7 +484,9 @@ const BookDetailPage = ({ user }) => {
                       {String.fromCharCode(65 + (i % 26))}
                     </div>
                     <div>
-                      <div style={{ fontWeight: 800, fontSize: '0.9rem', color: C.textPrim }}>Độc giả #{rev.user}</div>
+                      <div style={{ fontWeight: 800, fontSize: '0.9rem', color: C.textPrim }}>
+                        {rev.user_name || (rev.user ? `Độc giả #${rev.user}` : 'Độc giả Ẩn danh')}
+                      </div>
                       <Stars rating={rev.rating} size={13} />
                     </div>
                     <div style={{ marginLeft: 'auto', fontSize: '0.75rem', color: C.textMut, display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
@@ -487,6 +517,12 @@ const BookDetailPage = ({ user }) => {
                 <button onClick={() => navigate('/login')} style={{ background: `linear-gradient(135deg,${C.accent},#8b5cf6)`, color: '#fff', border: 'none', padding: '0.75rem 2rem', borderRadius: '50px', fontWeight: 700, cursor: 'pointer' }}>
                   Đăng nhập ngay
                 </button>
+              </div>
+            ) : userHasReviewed ? (
+              <div style={{ textAlign: 'center', padding: '2rem 1rem', background: '#f0fdf4', borderRadius: '1rem', border: '1px solid #dcfce7' }}>
+                <div style={{ fontSize: '2.5rem', marginBottom: '0.75rem' }}>✨</div>
+                <h3 style={{ color: '#166534', marginBottom: '0.5rem', fontSize: '1rem', fontWeight: 800 }}>Bạn đã gửi đánh giá</h3>
+                <p style={{ color: '#15803d', fontSize: '0.85rem', lineHeight: 1.5 }}>Cảm ơn bạn đã chia sẻ cảm nhận! Mỗi độc giả chỉ có thể đánh giá một lần để đảm bảo tính khách quan.</p>
               </div>
             ) : (
               <>
@@ -594,10 +630,6 @@ const BookDetailPage = ({ user }) => {
         </section>
       )}
 
-      {/* ── Footer strip ── */}
-      <footer style={{ background: '#1e293b', padding: '1.5rem 2rem', textAlign: 'center', color: '#475569', fontSize: '0.82rem' }}>
-        © 2026 OpenLib — Hệ thống quản lý thư viện hiện đại
-      </footer>
     </div>
   );
 };

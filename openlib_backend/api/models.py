@@ -5,13 +5,22 @@
 #   * Make sure each ForeignKey and OneToOneField has `on_delete` set to the desired behavior
 #   * Remove `managed = True` lines if you wish to allow Django to create, modify, and delete the table
 # Feel free to rename the models, but don't rename db_table values or field names.
+import os
 from django.db import models
+from django.conf import settings
+from django.core.validators import MinValueValidator
 
 
 class Authors(models.Model):
     author_id = models.AutoField(primary_key=True)
     name = models.CharField(max_length=100)
     bio = models.TextField(blank=True, null=True)
+    image = models.ImageField(upload_to='authors_images/', blank=True, null=True)
+
+    def delete(self, *args, **kwargs):
+        if self.image:
+            self.image.delete(save=False)
+        super(Authors, self).delete(*args, **kwargs)
 
     class Meta:
         managed = True
@@ -21,14 +30,19 @@ class Authors(models.Model):
 class Books(models.Model):
     book_id = models.AutoField(primary_key=True)
     isbn = models.CharField(unique=True, max_length=20, blank=True, null=True)
-    title = models.CharField(max_length=255)
+    title = models.CharField(unique=True, max_length=255)
     category = models.ForeignKey('Categories', models.DO_NOTHING, blank=True, null=True)
     author = models.ForeignKey(Authors, models.DO_NOTHING, blank=True, null=True)
     publisher = models.ForeignKey('Publishers', models.DO_NOTHING, blank=True, null=True)
-    publication_year = models.IntegerField(blank=True, null=True)
-    stock = models.IntegerField(blank=True, null=True)
-    created_at = models.DateTimeField(blank=True, null=True)
-    image = models.CharField(max_length=500, blank=True, null=True)
+    publication_year = models.IntegerField(blank=True, null=True, validators=[MinValueValidator(0)])
+    stock = models.IntegerField(blank=True, null=True, validators=[MinValueValidator(0)])
+    created_at = models.DateTimeField(auto_now_add=True, blank=True, null=True)
+    image = models.ImageField(upload_to='books_images/', blank=True, null=True)
+    
+    def delete(self, *args, **kwargs):
+        if self.image:
+            self.image.delete(save=False)
+        super(Books, self).delete(*args, **kwargs)
 
     class Meta:
         managed = True
@@ -89,7 +103,7 @@ class Users(models.Model):
     email = models.CharField(unique=True, max_length=100, blank=True, null=True)
     role = models.TextField()  # This field type is a guess.
     is_active = models.BooleanField(blank=True, null=True)
-    created_at = models.DateTimeField(blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True, blank=True, null=True)
 
     class Meta:
         managed = True
