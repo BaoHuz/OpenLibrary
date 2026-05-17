@@ -10,6 +10,8 @@ import PublicPage from './PublicPage';
 import BookDetailPage from './BookDetailPage';
 import PublicLayout from './PublicLayout';
 import SettingsPage from './SettingsPage';
+import NotFound from './NotFound';
+import Forbidden from './Forbidden';
 import './App.css';
 
 function App() {
@@ -19,6 +21,7 @@ function App() {
   const tabsConfig = {
     dashboard: { label: 'Tổng quan', url: 'books/' },
     books: { label: 'Quản lý Sách', url: 'books/' },
+    inventory: { label: 'Nhập kho', url: 'books/' },
     authors: { label: 'Tác giả', url: 'authors/' },
     categories: { label: 'Thể loại', url: 'categories/' },
     members: { label: 'Thành viên', url: 'users/' },
@@ -70,6 +73,10 @@ function App() {
         {/* LOGIN / REGISTER Toggled Screen */}
         <Route path="/login" element={isAuth ? <Navigate to="/" /> : <Login onLoginSuccess={handleLoginSuccess} />} />
         
+        {/* ERROR ROUTES */}
+        <Route path="/404" element={<NotFound />} />
+        <Route path="/403" element={<Forbidden user={currentUser} onLogout={handleLogout} />} />
+
         {/* ADMIN ROUTES */}
         <Route path="/admin/*" element={
           isAuth ? (
@@ -78,9 +85,14 @@ function App() {
               <Routes>
                 <Route path="/" element={<Dashboard activeTab="dashboard" tabs={tabsConfig} />} />
                 <Route path="books" element={<Dashboard activeTab="books" tabs={tabsConfig} />} />
+                <Route path="inventory" element={<Dashboard activeTab="inventory" tabs={tabsConfig} />} />
                 <Route path="authors" element={<Dashboard activeTab="authors" tabs={tabsConfig} />} />
                 <Route path="categories" element={<Dashboard activeTab="categories" tabs={tabsConfig} />} />
-                <Route path="members" element={<Dashboard activeTab="members" tabs={tabsConfig} />} />
+                <Route path="members" element={
+                  currentUser?.role?.toLowerCase() === 'admin' 
+                    ? <Dashboard activeTab="members" tabs={tabsConfig} /> 
+                    : <Navigate to="/admin" replace />
+                } />
                 <Route path="borrow" element={<Dashboard activeTab="borrow" tabs={tabsConfig} />} />
                 <Route path="borrow_requests" element={<Dashboard activeTab="borrow_requests" tabs={tabsConfig} />} />
                 <Route path="publishers" element={<Dashboard activeTab="publishers" tabs={tabsConfig} />} />
@@ -94,12 +106,12 @@ function App() {
                 <Route path="*" element={<Navigate to="/admin" />} />
               </Routes>
             </Layout>
-            ) : <Navigate to="/" />
+            ) : <Navigate to="/403" replace />
           ) : <Navigate to="/login" />
         } />
 
         {/* Catch all */}
-        <Route path="*" element={<Navigate to="/" />} />
+        <Route path="*" element={<NotFound />} />
       </Routes>
     </Router>
   );

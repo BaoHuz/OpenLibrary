@@ -117,6 +117,14 @@ const EditPage = () => {
   const endpoint = endpointMap[type] || type;
 
   useEffect(() => {
+    // Check role-based permission for members/users management
+    const savedUser = localStorage.getItem('user');
+    const userObj = savedUser ? JSON.parse(savedUser) : null;
+    if ((type === 'members' || type === 'users' || endpoint === 'users') && userObj?.role?.toLowerCase() !== 'admin') {
+      navigate('/403', { replace: true });
+      return;
+    }
+
     const fetchData = async () => {
       try {
         const response = await axios.get(`http://127.0.0.1:8000/api/${endpoint}/${id}/`);
@@ -167,13 +175,13 @@ const EditPage = () => {
       { key: 'email', label: 'Địa chỉ Email', type: 'email' },
       { key: 'password', label: 'Mật khẩu (Để trống nếu không đổi)', type: 'password' },
       { key: 'role', label: 'Vai trò', type: 'select', options: [
-        { value: 'admin', label: 'Quản trị viên (Admin)' },
-        { value: 'librarian', label: 'Thủ thư (Librarian)' },
-        { value: 'member', label: 'Thành viên (Member)' }
+        { value: 'Admin', label: 'Quản trị viên (Admin)' },
+        { value: 'Librarian', label: 'Thủ thư (Librarian)' },
+        { value: 'Member', label: 'Thành viên (Member)' }
       ] },
       { key: 'is_active', label: 'Hoạt động', type: 'select', options: [
-        { value: 'true', label: 'Đang hoạt động (True)' },
-        { value: 'false', label: 'Bị khóa (False)' }
+        { value: true, label: 'Đang hoạt động (True)' },
+        { value: false, label: 'Bị khóa (False)' }
       ] },
     ],
     members: [
@@ -181,13 +189,13 @@ const EditPage = () => {
       { key: 'email', label: 'Địa chỉ Email', type: 'email' },
       { key: 'password', label: 'Mật khẩu (Để trống nếu không đổi)', type: 'password' },
       { key: 'role', label: 'Vai trò', type: 'select', options: [
-        { value: 'admin', label: 'Quản trị viên (Admin)' },
-        { value: 'librarian', label: 'Thủ thư (Librarian)' },
-        { value: 'member', label: 'Thành viên (Member)' }
+        { value: 'Admin', label: 'Quản trị viên (Admin)' },
+        { value: 'Librarian', label: 'Thủ thư (Librarian)' },
+        { value: 'Member', label: 'Thành viên (Member)' }
       ] },
       { key: 'is_active', label: 'Hoạt động', type: 'select', options: [
-        { value: 'true', label: 'Đang hoạt động (True)' },
-        { value: 'false', label: 'Bị khóa (False)' }
+        { value: true, label: 'Đang hoạt động (True)' },
+        { value: false, label: 'Bị khóa (False)' }
       ] },
     ],
     publishers: [

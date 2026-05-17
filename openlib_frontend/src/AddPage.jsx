@@ -64,6 +64,14 @@ const AddPage = () => {
   const endpoint = apiMap[type] || type;
 
   useEffect(() => {
+    // Check role-based permission for members/users management
+    const savedUser = localStorage.getItem('user');
+    const userObj = savedUser ? JSON.parse(savedUser) : null;
+    if ((type === 'members' || type === 'users' || endpoint === 'users') && userObj?.role?.toLowerCase() !== 'admin') {
+      navigate('/403', { replace: true });
+      return;
+    }
+
     if (type === 'books') {
       const fetchExtraData = async () => {
         try {

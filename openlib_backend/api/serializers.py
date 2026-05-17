@@ -29,7 +29,7 @@ class FineSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 class UserSerializer(serializers.ModelSerializer):
-    password = serializers.CharField(write_only=True, required=True)
+    password = serializers.CharField(write_only=True, required=False)
 
     class Meta:
         model = Users
@@ -40,11 +40,20 @@ class UserSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         from django.contrib.auth.hashers import make_password
-        password = validated_data.pop('password')
+        password = validated_data.pop('password', None)
+        if not password:
+            raise serializers.ValidationError({"password": "Mật khẩu không được để trống khi tạo mới."})
         validated_data['password_hash'] = make_password(password)
         if 'is_active' not in validated_data:
             validated_data['is_active'] = True
         return super().create(validated_data)
+
+    def update(self, instance, validated_data):
+        from django.contrib.auth.hashers import make_password
+        password = validated_data.pop('password', None)
+        if password:
+            instance.password_hash = make_password(password)
+        return super().update(instance, validated_data)
 
 class BookSerializer(serializers.ModelSerializer):
     author_name = serializers.ReadOnlyField(source='author.name')

@@ -10,6 +10,7 @@ import {
 } from 'recharts';
 import { useNavigate } from 'react-router-dom';
 import { getImageUrl } from './utils/imageUrl';
+import Select from 'react-select';
 
 const stripHtml = (html) => {
   if (!html) return '';
@@ -433,6 +434,730 @@ const BorrowRequestsPanel = () => {
   );
 };
 
+/* ═══════════════════════════════════════════════════════
+   INVENTORY PANEL — Trang quản trị nhập kho sách
+═══════════════════════════════════════════════════════ */
+const InventoryPanel = () => {
+  const [books, setBooks] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedBookId, setSelectedBookId] = useState('');
+  const [addQty, setAddQty] = useState(1);
+  const [updating, setUpdating] = useState(false);
+  const [csvFile, setCsvFile] = useState(null);
+  const [csvPreview, setCsvPreview] = useState([]);
+  const [importing, setImporting] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [message, setMessage] = useState(null);
+  const [importHistory, setImportHistory] = useState([]);
+  const [historySearch, setHistorySearch] = useState('');
+  const [historyPage, setHistoryPage] = useState(1);
+  const [csvEncoding, setCsvEncoding] = useState('UTF-8');
+  const itemsPerPage = 10;
+
+  const fetchBooks = async () => {
+    setLoading(true);
+    try {
+      const res = await axios.get('http://127.0.0.1:8000/api/books/');
+      setBooks(Array.isArray(res.data) ? res.data : []);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchBooks();
+    // Load history from localStorage
+    const saved = localStorage.getItem('openlib_import_history');
+    if (saved) {
+      try {
+        setImportHistory(JSON.parse(saved));
+      } catch (e) {
+        console.error(e);
+      }
+    }
+  }, []);
+
+  const logImportTransaction = (type, details) => {
+    const adminUser = JSON.parse(localStorage.getItem('user') || '{}');
+    const newRecord = {
+      id: `NK-${new Date().getTime().toString().slice(-6)}`,
+      timestamp: new Date().toLocaleString('vi-VN'),
+      operator: adminUser.username || 'Thủ thư',
+      type: type, // 'quick' or 'bulk'
+      details: details,
+      status: 'success'
+    };
+
+    setImportHistory(prev => {
+      const updated = [newRecord, ...prev];
+      localStorage.setItem('openlib_import_history', JSON.stringify(updated));
+      return updated;
+    });
+  };
+
+  const exportHistoryCSV = () => {
+    if (importHistory.length === 0) return;
+    const headers = 'Mã phiếu,Thời gian,Thủ thư giao dịch,Hình thức,Chi tiết,Trạng thái\n';
+    const rows = importHistory.map(item => {
+      const typeStr = item.type === 'quick' ? 'Nhập lẻ' : 'Nhập file';
+      return `${item.id},"${item.timestamp}","${item.operator}","${typeStr}","${item.details}",Thành công`;
+    }).join('\n');
+    const csvContent = "\uFEFF" + headers + rows;
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `lich_su_nhap_kho_${new Date().getTime()}.csv`;
+    link.target = '_blank';
+    link.style.display = 'none';
+    document.body.appendChild(link);
+    link.click();
+    setTimeout(() => {
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    }, 100);
+  };
+
+  const downloadSampleCSV = () => {
+    const headers = 'isbn,title,stock,publication_year,category_id,author_id,publisher_id\n';
+    const row1 = '978-6043444455,Tôi Thấy Hoa Vàng Trên Cỏ Xanh,15,2015,1,1,1\n';
+    const row2 = '978-6047761008,Mắt Biếc (Bản Đặc Biệt),20,2019,2,2,1\n';
+    const row3 = '978-0135974445,Nhà Giả Kim (Tái Bản 2020),30,2020,3,1,2\n';
+    const csvContent = "\uFEFF" + headers + row1 + row2 + row3;
+    
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'sample_import_books.csv';
+    link.target = '_blank';
+    link.style.display = 'none';
+    document.body.appendChild(link);
+    link.click();
+    setTimeout(() => {
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    }, 100);
+  };
+
+  const handleFileChange = (fileOrEvent) => {
+    let file = null;
+    if (fileOrEvent && fileOrEvent.target && fileOrEvent.target.files) {
+      file = fileOrEvent.target.files[0];
+    } else if (fileOrEvent instanceof File) {
+      file = fileOrEvent;
+    } else if (csvFile) {
+      file = csvFile;
+    }
+
+    if (!file) return;
+    setCsvFile(file);
+
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      let text = evt.target.result;
+      if (text.charCodeAt(0) === 0xFEFF) {
+        text = text.substr(1);
+      }
+      const lines = text.split('\n').map(line => line.trim()).filter(line => line.length > 0);
+      if (lines.length <= 1) {
+        setCsvPreview([]);
+        return;
+      }
+      
+      const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
+      const rows = lines.slice(1);
+      
+      const parsedRows = rows.map(row => {
+        const columns = row.split(',').map(c => c.trim());
+        const data = {};
+        headers.forEach((header, index) => {
+          data[header] = columns[index] || '';
+        });
+        return data;
+      });
+      setCsvPreview(parsedRows);
+    };
+    reader.readAsText(file, csvEncoding);
+  };
+
+  useEffect(() => {
+    if (csvFile) handleFileChange(csvFile);
+  }, [csvEncoding]);
+
+  const handlePreviewCellChange = (rowIndex, field, value) => {
+    setCsvPreview(prev => {
+      const copy = [...prev];
+      copy[rowIndex] = { ...copy[rowIndex], [field]: value };
+      return copy;
+    });
+  };
+
+  const handleQuickAdd = async (e) => {
+    e.preventDefault();
+    if (!selectedBookId) {
+      alert('Vui lòng chọn sách cần nhập thêm!');
+      return;
+    }
+    const book = books.find(b => b.book_id === parseInt(selectedBookId));
+    if (!book) return;
+
+    setUpdating(true);
+    const newStock = (parseInt(book.stock) || 0) + parseInt(addQty);
+
+    try {
+      await axios.patch(`http://127.0.0.1:8000/api/books/${book.book_id}/`, {
+        stock: newStock
+      });
+      setMessage({ type: 'success', text: `Đã nhập thêm thành công ${addQty} cuốn cho sách "${book.title}".` });
+      logImportTransaction('quick', `Nhập thêm ${addQty} cuốn cho sách "${book.title}"`);
+      setSelectedBookId('');
+      setAddQty(1);
+      fetchBooks();
+      setTimeout(() => setMessage(null), 4000);
+    } catch (err) {
+      setMessage({ type: 'error', text: 'Có lỗi xảy ra khi cập nhật kho!' });
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  const handleCSVImport = async (e) => {
+    e.preventDefault();
+    if (csvPreview.length === 0) {
+      alert('Vui lòng chọn file CSV hợp lệ!');
+      return;
+    }
+
+    setImporting(true);
+    setProgress(0);
+
+    let successCount = 0;
+    let failCount = 0;
+
+    for (let i = 0; i < csvPreview.length; i++) {
+      const row = csvPreview[i];
+
+      // Construct book object
+      const bookObj = {
+        title: row.title || '',
+        isbn: row.isbn || '',
+        stock: parseInt(row.stock) || 0,
+        publication_year: parseInt(row.publication_year) || new Date().getFullYear(),
+        category: row.category_id ? parseInt(row.category_id) : null,
+        author: row.author_id ? parseInt(row.author_id) : null,
+        publisher: row.publisher_id ? parseInt(row.publisher_id) : null,
+      };
+
+      try {
+        await axios.post('http://127.0.0.1:8000/api/books/', bookObj);
+        successCount++;
+      } catch (err) {
+        console.error('Import failed for row:', row, err);
+        failCount++;
+      }
+
+      setProgress(Math.round(((i + 1) / csvPreview.length) * 100));
+    }
+
+    setImporting(false);
+    setCsvFile(null);
+    setCsvPreview([]);
+    setMessage({
+      type: 'success',
+      text: `Nhập hàng loạt hoàn tất! Nhập thành công: ${successCount} đầu sách. Thất bại: ${failCount} đầu sách.`
+    });
+    logImportTransaction('bulk', `Nhập hàng loạt ${successCount} đầu sách bằng file CSV`);
+    fetchBooks();
+    setTimeout(() => setMessage(null), 6000);
+  };
+
+  const totalBooks = books.length;
+  const totalStock = books.reduce((sum, b) => sum + (parseInt(b.stock) || 0), 0);
+  const lowStockCount = books.filter(b => (parseInt(b.stock) || 0) < 5).length;
+
+  return (
+    <div style={{ paddingBottom: '2rem' }}>
+      {/* STATS ROW */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1.25rem', marginBottom: '1.75rem' }}>
+        <div style={{ background: 'var(--card-bg)', border: '1px solid var(--table-border)', borderRadius: '1rem', padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '0.4rem', boxShadow: 'var(--shadow-sm)' }}>
+          <span style={{ fontSize: '1.5rem' }}>📦</span>
+          <span style={{ fontSize: '1.75rem', fontWeight: 900, color: 'var(--accent)' }}>{loading ? '…' : totalStock}</span>
+          <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-secondary)' }}>Tổng số sách hiện có trong kho</span>
+        </div>
+        <div style={{ background: 'var(--card-bg)', border: '1px solid var(--table-border)', borderRadius: '1rem', padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '0.4rem', boxShadow: 'var(--shadow-sm)' }}>
+          <span style={{ fontSize: '1.5rem' }}>⚠️</span>
+          <span style={{ fontSize: '1.75rem', fontWeight: 900, color: '#ef4444' }}>{loading ? '…' : lowStockCount}</span>
+          <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-secondary)' }}>Đầu sách sắp hết hàng (&lt; 5 cuốn)</span>
+        </div>
+        <div style={{ background: 'var(--card-bg)', border: '1px solid var(--table-border)', borderRadius: '1rem', padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '0.4rem', boxShadow: 'var(--shadow-sm)' }}>
+          <span style={{ fontSize: '1.5rem' }}>📚</span>
+          <span style={{ fontSize: '1.75rem', fontWeight: 900, color: '#10b981' }}>{loading ? '…' : totalBooks}</span>
+          <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-secondary)' }}>Tổng số danh mục đầu sách</span>
+        </div>
+      </div>
+
+      {message && (
+        <div style={{
+          padding: '1rem', borderRadius: '0.75rem', marginBottom: '1.5rem',
+          background: message.type === 'success' ? 'rgba(16,185,129,0.13)' : 'rgba(239,68,68,0.13)',
+          color: message.type === 'success' ? '#059669' : '#dc2626',
+          border: `1px solid ${message.type === 'success' ? 'rgba(16,185,129,0.4)' : 'rgba(239,68,68,0.4)'}`,
+          fontWeight: 700, fontSize: '0.85rem'
+        }}>
+          {message.text}
+        </div>
+      )}
+
+      {/* TWO COLUMNS */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+        {/* COL 1: QUICK STOCK ADJUSTMENT */}
+        <div style={{ background: 'var(--card-bg)', border: '1px solid var(--table-border)', borderRadius: '1.25rem', padding: '1.75rem', boxShadow: 'var(--shadow-sm)' }}>
+          <h3 style={{ margin: '0 0 0.5rem', fontWeight: 800, fontSize: '1.1rem', color: 'var(--text-primary)' }}>⚡ Nhập Thêm Sách Có Sẵn</h3>
+          <p style={{ margin: '0 0 1.5rem', fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 500 }}>
+            Tăng số lượng tồn kho nhanh chóng cho sách đã tồn tại trong hệ thống.
+          </p>
+
+          <form onSubmit={handleQuickAdd} style={{ display: 'flex', flexDirection: 'column', gap: '1.1rem' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+              <label style={{ fontSize: '0.78rem', fontWeight: 750, color: 'var(--text-secondary)' }}>CHỌN ĐẦU SÁCH</label>
+              <Select
+                options={books.map(b => ({ value: b.book_id, label: `${b.title} (ISBN: ${b.isbn} - Tồn: ${b.stock})` }))}
+                value={selectedBookId ? { value: selectedBookId, label: books.find(b => b.book_id === parseInt(selectedBookId))?.title || 'Đã chọn' } : null}
+                onChange={selected => setSelectedBookId(selected ? selected.value : '')}
+                placeholder="-- Gõ để tìm hoặc chọn sách --"
+                isSearchable
+                styles={{
+                  control: (base) => ({
+                    ...base, padding: '0.2rem', borderRadius: '0.75rem',
+                    border: '1px solid var(--table-border)', background: 'var(--input-bg)',
+                    boxShadow: 'none', '&:hover': { borderColor: 'var(--accent)' }
+                  }),
+                  singleValue: (base) => ({ ...base, color: 'var(--text-primary)', fontWeight: 600, fontSize: '0.85rem' }),
+                  menu: (base) => ({ ...base, zIndex: 9999, background: 'var(--card-bg)', border: '1px solid var(--table-border)', borderRadius: '0.75rem' }),
+                  option: (base, state) => ({ ...base, background: state.isFocused ? 'rgba(99,102,241,0.1)' : 'transparent', color: 'var(--text-primary)', cursor: 'pointer', fontSize: '0.85rem' }),
+                  input: (base) => ({ ...base, color: 'var(--text-primary)' })
+                }}
+              />
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+              <label style={{ fontSize: '0.78rem', fontWeight: 750, color: 'var(--text-secondary)' }}>SỐ LƯỢNG NHẬP THÊM</label>
+              <input
+                type="number"
+                min="1"
+                value={addQty}
+                onChange={e => setAddQty(e.target.value)}
+                style={{
+                  padding: '0.65rem 1rem', borderRadius: '0.75rem',
+                  border: '1px solid var(--table-border)', background: 'var(--input-bg)',
+                  color: 'var(--text-primary)', fontWeight: 600, fontSize: '0.85rem', outline: 'none'
+                }}
+              />
+            </div>
+
+            <button
+              type="submit"
+              disabled={updating}
+              style={{
+                marginTop: '0.5rem', padding: '0.7rem', borderRadius: '0.75rem',
+                border: 'none', background: 'var(--accent)', color: '#fff',
+                fontWeight: 800, fontSize: '0.85rem', cursor: 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem',
+                boxShadow: '0 4px 12px var(--accent-glow)'
+              }}
+            >
+              {updating ? 'Đang cập nhật...' : 'Cập nhật số lượng'}
+            </button>
+          </form>
+        </div>
+
+        {/* COL 2: EXCEL/CSV BULK IMPORT */}
+        <div style={{ background: 'var(--card-bg)', border: '1px solid var(--table-border)', borderRadius: '1.25rem', padding: '1.75rem', boxShadow: 'var(--shadow-sm)' }}>
+          <h3 style={{ margin: '0 0 0.5rem', fontWeight: 800, fontSize: '1.1rem', color: 'var(--text-primary)' }}>📁 Nhập Sách Hàng Loạt (File CSV)</h3>
+          <p style={{ margin: '0 0 1.5rem', fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 500 }}>
+            Tải lên file CSV chứa danh mục để thêm nhiều sách cùng lúc vào hệ thống.
+          </p>
+
+          <form onSubmit={handleCSVImport} style={{ display: 'flex', flexDirection: 'column', gap: '1.1rem' }}>
+            <div style={{
+              border: '2px dashed var(--table-border)', borderRadius: '1rem',
+              padding: '1.5rem', display: 'flex', flexDirection: 'column',
+              alignItems: 'center', justifyContent: 'center', gap: '0.6rem',
+              background: 'var(--input-bg)', cursor: 'pointer', position: 'relative'
+            }}>
+              <span style={{ fontSize: '2rem' }}>📤</span>
+              <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-secondary)' }}>
+                {csvFile ? csvFile.name : 'Nhấp để chọn file CSV'}
+              </span>
+              <input
+                type="file"
+                accept=".csv"
+                onChange={handleFileChange}
+                style={{
+                  position: 'absolute', top: 0, left: 0, width: '100%', height: '100%',
+                  opacity: 0, cursor: 'pointer'
+                }}
+              />
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem', marginTop: '-0.5rem', marginBottom: '0.5rem' }}>
+              <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: 700 }}>Bảng mã (Encoding):</span>
+              <select
+                value={csvEncoding}
+                onChange={e => setCsvEncoding(e.target.value)}
+                style={{
+                  padding: '0.2rem 0.5rem', borderRadius: '0.4rem', border: '1px solid var(--table-border)',
+                  background: 'var(--input-bg)', color: 'var(--text-primary)', fontSize: '0.75rem', outline: 'none', fontWeight: 600
+                }}
+              >
+                <option value="UTF-8">UTF-8 (Chuẩn quốc tế)</option>
+                <option value="windows-1258">Windows-1258 (Excel tiếng Việt)</option>
+              </select>
+            </div>
+
+            <div style={{ background: 'rgba(99,102,241,0.06)', borderRadius: '0.75rem', padding: '0.75rem 1rem', border: '1px solid rgba(99,102,241,0.15)', display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ fontSize: '0.73rem', fontWeight: 800, color: 'var(--accent)' }}>* CẤU TRÚC FILE CSV MẪU:</div>
+                <button
+                  type="button"
+                  onClick={downloadSampleCSV}
+                  style={{
+                    background: 'var(--accent)', color: '#fff', border: 'none',
+                    padding: '0.25rem 0.6rem', borderRadius: '6px', fontSize: '0.68rem',
+                    fontWeight: 800, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.2rem'
+                  }}
+                >
+                  📥 Tải file mẫu
+                </button>
+              </div>
+              <code style={{ fontSize: '0.65rem', color: 'var(--text-primary)', wordBreak: 'break-all' }}>
+                isbn,title,stock,publication_year,category_id,author_id,publisher_id
+              </code>
+            </div>
+
+            {importing && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-secondary)' }}>
+                  <span>Tiến trình nhập sách...</span>
+                  <span>{progress}%</span>
+                </div>
+                <div style={{ background: 'var(--table-border)', height: '8px', borderRadius: '4px', overflow: 'hidden' }}>
+                  <div style={{ width: `${progress}%`, background: 'var(--accent)', height: '100%', transition: 'width 0.1s' }}></div>
+                </div>
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={importing || csvPreview.length === 0}
+              style={{
+                marginTop: '0.5rem', padding: '0.7rem', borderRadius: '0.75rem',
+                border: 'none', background: importing || csvPreview.length === 0 ? 'var(--table-border)' : 'var(--accent)',
+                color: '#fff', fontWeight: 800, fontSize: '0.85rem',
+                cursor: importing || csvPreview.length === 0 ? 'not-allowed' : 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem',
+                boxShadow: importing || csvPreview.length === 0 ? 'none' : '0 4px 12px var(--accent-glow)'
+              }}
+            >
+              {importing ? 'Đang xử lý file...' : 'Bắt đầu nhập sách'}
+            </button>
+          </form>
+        </div>
+      </div>
+
+      {/* CSV PREVIEW TABLE ROW */}
+      {csvPreview.length > 0 && (
+        <div style={{
+          marginTop: '1.75rem', background: 'var(--card-bg)', border: '1px solid var(--table-border)',
+          borderRadius: '1.25rem', padding: '1.5rem', boxShadow: 'var(--shadow-sm)'
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+            <div>
+              <h3 style={{ margin: 0, fontWeight: 800, fontSize: '1.1rem', color: 'var(--text-primary)' }}>👀 Xem Trước Dữ Liệu Nhập Kho ({csvPreview.length} bản ghi)</h3>
+              <p style={{ margin: 0, fontSize: '0.78rem', color: 'var(--text-secondary)', fontWeight: 500 }}>
+                Kiểm tra kỹ các trường thông tin bên dưới trước khi tiến hành thêm vào hệ thống.
+              </p>
+            </div>
+            <button
+              onClick={() => { setCsvFile(null); setCsvPreview([]); }}
+              style={{
+                background: 'rgba(239,68,68,0.1)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.2)',
+                padding: '0.35rem 0.8rem', borderRadius: '0.5rem', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer'
+              }}
+            >
+              Hủy bỏ file
+            </button>
+          </div>
+
+          <div style={{ maxHeight: '250px', overflowY: 'auto', borderRadius: '0.75rem', border: '1px solid var(--table-border)' }}>
+            <table className="lms-table" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem' }}>
+              <thead>
+                <tr style={{ background: 'var(--input-bg)', borderBottom: '1px solid var(--table-border)' }}>
+                  <th style={{ padding: '0.6rem 1rem', textAlign: 'left', fontWeight: 800, color: 'var(--text-secondary)' }}>ISBN</th>
+                  <th style={{ padding: '0.6rem 1rem', textAlign: 'left', fontWeight: 800, color: 'var(--text-secondary)' }}>Tên sách</th>
+                  <th style={{ padding: '0.6rem 1rem', textAlign: 'center', fontWeight: 800, color: 'var(--text-secondary)' }}>Số lượng</th>
+                  <th style={{ padding: '0.6rem 1rem', textAlign: 'center', fontWeight: 800, color: 'var(--text-secondary)' }}>Năm XB</th>
+                  <th style={{ padding: '0.6rem 1rem', textAlign: 'center', fontWeight: 800, color: 'var(--text-secondary)' }}>ID Thể loại</th>
+                  <th style={{ padding: '0.6rem 1rem', textAlign: 'center', fontWeight: 800, color: 'var(--text-secondary)' }}>ID Tác giả</th>
+                  <th style={{ padding: '0.6rem 1rem', textAlign: 'center', fontWeight: 800, color: 'var(--text-secondary)' }}>ID NXB</th>
+                </tr>
+              </thead>
+              <tbody>
+                {csvPreview.map((row, idx) => (
+                  <tr key={idx} style={{ borderBottom: '1px solid var(--table-border)', background: idx % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.02)' }}>
+                    <td style={{ padding: '0.2rem 0.5rem' }}>
+                      <input
+                        type="text"
+                        value={row.isbn || ''}
+                        onChange={e => handlePreviewCellChange(idx, 'isbn', e.target.value)}
+                        style={{
+                          background: 'transparent', border: 'none', color: 'var(--text-primary)',
+                          width: '100%', padding: '0.4rem 0.5rem', fontSize: '0.8rem', fontWeight: 700, outline: 'none', borderRadius: '4px'
+                        }}
+                        onFocus={e => e.currentTarget.style.background = 'var(--input-bg)'}
+                        onBlur={e => e.currentTarget.style.background = 'transparent'}
+                      />
+                    </td>
+                    <td style={{ padding: '0.2rem 0.5rem' }}>
+                      <input
+                        type="text"
+                        value={row.title || ''}
+                        onChange={e => handlePreviewCellChange(idx, 'title', e.target.value)}
+                        style={{
+                          background: 'transparent', border: 'none', color: 'var(--text-primary)',
+                          width: '100%', padding: '0.4rem 0.5rem', fontSize: '0.8rem', fontWeight: 650, outline: 'none', borderRadius: '4px'
+                        }}
+                        onFocus={e => e.currentTarget.style.background = 'var(--input-bg)'}
+                        onBlur={e => e.currentTarget.style.background = 'transparent'}
+                      />
+                    </td>
+                    <td style={{ padding: '0.2rem 0.5rem', textAlign: 'center' }}>
+                      <input
+                        type="number"
+                        value={row.stock || ''}
+                        onChange={e => handlePreviewCellChange(idx, 'stock', e.target.value)}
+                        style={{
+                          background: 'transparent', border: 'none', color: 'var(--accent)',
+                          width: '100%', padding: '0.4rem 0.5rem', fontSize: '0.8rem', fontWeight: 800, outline: 'none', borderRadius: '4px', textAlign: 'center'
+                        }}
+                        onFocus={e => e.currentTarget.style.background = 'var(--input-bg)'}
+                        onBlur={e => e.currentTarget.style.background = 'transparent'}
+                      />
+                    </td>
+                    <td style={{ padding: '0.2rem 0.5rem', textAlign: 'center' }}>
+                      <input
+                        type="number"
+                        value={row.publication_year || ''}
+                        onChange={e => handlePreviewCellChange(idx, 'publication_year', e.target.value)}
+                        style={{
+                          background: 'transparent', border: 'none', color: 'var(--text-secondary)',
+                          width: '100%', padding: '0.4rem 0.5rem', fontSize: '0.8rem', fontWeight: 600, outline: 'none', borderRadius: '4px', textAlign: 'center'
+                        }}
+                        onFocus={e => e.currentTarget.style.background = 'var(--input-bg)'}
+                        onBlur={e => e.currentTarget.style.background = 'transparent'}
+                      />
+                    </td>
+                    <td style={{ padding: '0.2rem 0.5rem', textAlign: 'center' }}>
+                      <input
+                        type="number"
+                        value={row.category_id || ''}
+                        onChange={e => handlePreviewCellChange(idx, 'category_id', e.target.value)}
+                        style={{
+                          background: 'transparent', border: 'none', color: 'var(--text-secondary)',
+                          width: '100%', padding: '0.4rem 0.5rem', fontSize: '0.8rem', fontWeight: 600, outline: 'none', borderRadius: '4px', textAlign: 'center'
+                        }}
+                        onFocus={e => e.currentTarget.style.background = 'var(--input-bg)'}
+                        onBlur={e => e.currentTarget.style.background = 'transparent'}
+                      />
+                    </td>
+                    <td style={{ padding: '0.2rem 0.5rem', textAlign: 'center' }}>
+                      <input
+                        type="number"
+                        value={row.author_id || ''}
+                        onChange={e => handlePreviewCellChange(idx, 'author_id', e.target.value)}
+                        style={{
+                          background: 'transparent', border: 'none', color: 'var(--text-secondary)',
+                          width: '100%', padding: '0.4rem 0.5rem', fontSize: '0.8rem', fontWeight: 600, outline: 'none', borderRadius: '4px', textAlign: 'center'
+                        }}
+                        onFocus={e => e.currentTarget.style.background = 'var(--input-bg)'}
+                        onBlur={e => e.currentTarget.style.background = 'transparent'}
+                      />
+                    </td>
+                    <td style={{ padding: '0.2rem 0.5rem', textAlign: 'center' }}>
+                      <input
+                        type="number"
+                        value={row.publisher_id || ''}
+                        onChange={e => handlePreviewCellChange(idx, 'publisher_id', e.target.value)}
+                        style={{
+                          background: 'transparent', border: 'none', color: 'var(--text-secondary)',
+                          width: '100%', padding: '0.4rem 0.5rem', fontSize: '0.8rem', fontWeight: 600, outline: 'none', borderRadius: '4px', textAlign: 'center'
+                        }}
+                        onFocus={e => e.currentTarget.style.background = 'var(--input-bg)'}
+                        onBlur={e => e.currentTarget.style.background = 'transparent'}
+                      />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* HISTORICAL RECEIPTS SECTION */}
+      {(() => {
+        const filteredHistory = importHistory.filter(item => 
+          item.id.toLowerCase().includes(historySearch.toLowerCase()) ||
+          item.details.toLowerCase().includes(historySearch.toLowerCase()) ||
+          item.operator.toLowerCase().includes(historySearch.toLowerCase())
+        );
+        const totalPages = Math.ceil(filteredHistory.length / itemsPerPage);
+        const currentHistory = filteredHistory.slice((historyPage - 1) * itemsPerPage, historyPage * itemsPerPage);
+
+        return (
+          <div style={{
+            marginTop: '1.75rem', background: 'var(--card-bg)', border: '1px solid var(--table-border)',
+            borderRadius: '1.25rem', padding: '1.75rem', boxShadow: 'var(--shadow-sm)'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.25rem' }}>
+              <div>
+                <h3 style={{ margin: 0, fontWeight: 800, fontSize: '1.1rem', color: 'var(--text-primary)' }}>📜 Lịch Sử Giao Dịch Nhập Kho</h3>
+                <p style={{ margin: 0, fontSize: '0.78rem', color: 'var(--text-secondary)', fontWeight: 500 }}>
+                  Nhật ký ghi nhận lịch sử các lần bổ sung và nhập sách hàng loạt vào hệ thống.
+                </p>
+              </div>
+              
+              <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+                {importHistory.length > 0 && (
+                  <>
+                    <div style={{ position: 'relative' }}>
+                      <span style={{ position: 'absolute', left: '0.8rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }}><Search size={14} /></span>
+                      <input
+                        type="text"
+                        placeholder="Tìm kiếm phiếu nhập..."
+                        value={historySearch}
+                        onChange={e => { setHistorySearch(e.target.value); setHistoryPage(1); }}
+                        style={{
+                          padding: '0.45rem 1rem 0.45rem 2.2rem', borderRadius: '0.5rem',
+                          border: '1px solid var(--table-border)', background: 'var(--input-bg)',
+                          color: 'var(--text-primary)', fontSize: '0.75rem', outline: 'none'
+                        }}
+                      />
+                    </div>
+                    <button
+                      onClick={exportHistoryCSV}
+                      style={{
+                        background: 'rgba(16,185,129,0.1)', color: '#10b981', border: '1px solid rgba(16,185,129,0.2)',
+                        padding: '0.45rem 0.8rem', borderRadius: '0.5rem', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer',
+                        display: 'flex', alignItems: 'center', gap: '0.3rem'
+                      }}
+                    >
+                      <Download size={14} /> Xuất File CSV
+                    </button>
+                    <button
+                      onClick={() => {
+                        if (window.confirm('Bạn có chắc chắn muốn xóa toàn bộ lịch sử hiển thị trên trình duyệt này không?')) {
+                          setImportHistory([]);
+                          localStorage.removeItem('openlib_import_history');
+                        }
+                      }}
+                      style={{
+                        background: 'transparent', color: '#ef4444', border: '1px solid rgba(239,68,68,0.2)',
+                        padding: '0.45rem 0.8rem', borderRadius: '0.5rem', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer'
+                      }}
+                    >
+                      Xóa tất cả
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
+
+            {importHistory.length === 0 ? (
+              <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-secondary)', fontSize: '0.82rem', fontWeight: 600 }}>
+                📭 Chưa có giao dịch nhập kho nào được ghi nhận trên trình duyệt này.
+              </div>
+            ) : filteredHistory.length === 0 ? (
+              <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-secondary)', fontSize: '0.82rem', fontWeight: 600 }}>
+                ❌ Không tìm thấy giao dịch nào phù hợp với từ khóa tìm kiếm.
+              </div>
+            ) : (
+              <>
+                <div style={{ overflowY: 'auto', borderRadius: '0.75rem', border: '1px solid var(--table-border)' }}>
+                  <table className="lms-table" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem' }}>
+                    <thead>
+                      <tr style={{ background: 'var(--input-bg)', borderBottom: '1px solid var(--table-border)' }}>
+                        <th style={{ padding: '0.6rem 1rem', textAlign: 'left', fontWeight: 800, color: 'var(--text-secondary)' }}>MÃ PHIẾU</th>
+                        <th style={{ padding: '0.6rem 1rem', textAlign: 'left', fontWeight: 800, color: 'var(--text-secondary)' }}>THỜI GIAN</th>
+                        <th style={{ padding: '0.6rem 1rem', textAlign: 'left', fontWeight: 800, color: 'var(--text-secondary)' }}>THỦ THƯ</th>
+                        <th style={{ padding: '0.6rem 1rem', textAlign: 'center', fontWeight: 800, color: 'var(--text-secondary)' }}>HÌNH THỨC</th>
+                        <th style={{ padding: '0.6rem 1rem', textAlign: 'left', fontWeight: 800, color: 'var(--text-secondary)' }}>CHI TIẾT PHIẾU NHẬP</th>
+                        <th style={{ padding: '0.6rem 1rem', textAlign: 'center', fontWeight: 800, color: 'var(--text-secondary)' }}>TRẠNG THÁI</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {currentHistory.map((item, idx) => (
+                        <tr key={item.id} style={{ borderBottom: '1px solid var(--table-border)', background: idx % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.02)' }}>
+                          <td style={{ padding: '0.75rem 1rem', color: 'var(--text-primary)', fontWeight: 800 }}>{item.id}</td>
+                          <td style={{ padding: '0.75rem 1rem', color: 'var(--text-secondary)', fontWeight: 600 }}>{item.timestamp}</td>
+                          <td style={{ padding: '0.75rem 1rem', color: 'var(--text-primary)', fontWeight: 700 }}>👤 {item.operator}</td>
+                          <td style={{ padding: '0.75rem 1rem', textAlign: 'center' }}>
+                            <span style={{
+                              padding: '0.2rem 0.5rem', borderRadius: '6px', fontSize: '0.7rem', fontWeight: 800,
+                              background: item.type === 'quick' ? 'rgba(99,102,241,0.1)' : 'rgba(16,185,129,0.1)',
+                              color: item.type === 'quick' ? 'var(--accent)' : '#10b981',
+                              border: `1px solid ${item.type === 'quick' ? 'rgba(99,102,241,0.2)' : 'rgba(16,185,129,0.2)'}`
+                            }}>
+                              {item.type === 'quick' ? '⚡ Nhập lẻ' : '📁 Nhập file'}
+                            </span>
+                          </td>
+                          <td style={{ padding: '0.75rem 1rem', color: 'var(--text-primary)', fontWeight: 650 }}>{item.details}</td>
+                          <td style={{ padding: '0.75rem 1rem', textAlign: 'center' }}>
+                            <span style={{
+                              padding: '0.2rem 0.5rem', borderRadius: '6px', fontSize: '0.7rem', fontWeight: 800,
+                              background: 'rgba(16,185,129,0.12)', color: '#10b981', border: '1px solid rgba(16,185,129,0.25)'
+                            }}>
+                              Thành công ✅
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* PAGINATION */}
+                {totalPages > 1 && (
+                  <div style={{ display: 'flex', justifyContent: 'center', gap: '0.5rem', marginTop: '1.25rem' }}>
+                    {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                      <button
+                        key={page}
+                        onClick={() => setHistoryPage(page)}
+                        style={{
+                          padding: '0.35rem 0.8rem', borderRadius: '0.5rem', fontWeight: 700, fontSize: '0.8rem',
+                          background: historyPage === page ? 'var(--accent)' : 'var(--input-bg)',
+                          color: historyPage === page ? '#fff' : 'var(--text-primary)',
+                          border: `1px solid ${historyPage === page ? 'var(--accent)' : 'var(--table-border)'}`,
+                          cursor: 'pointer'
+                        }}
+                      >
+                        {page}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        );
+      })()}
+    </div>
+  );
+};
+
 /* ════════════════════════════
    MAIN DASHBOARD COMPONENT
 ════════════════════════════ */
@@ -634,6 +1359,15 @@ const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
     return (
       <div className="dashboard-wrapper">
         <BorrowRequestsPanel />
+      </div>
+    );
+  }
+
+  /* ══ Nếu đang ở tab Nhập kho → render panel riêng ══ */
+  if (activeTab === 'inventory') {
+    return (
+      <div className="dashboard-wrapper">
+        <InventoryPanel />
       </div>
     );
   }

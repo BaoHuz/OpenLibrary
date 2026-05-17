@@ -39,6 +39,23 @@ class BookListAPIView(generics.ListCreateAPIView):
     queryset = Books.objects.all()
     serializer_class = BookSerializer
 
+    def create(self, request, *args, **kwargs):
+        isbn = request.data.get('isbn')
+        try:
+            stock_to_add = int(request.data.get('stock', 0))
+        except ValueError:
+            stock_to_add = 0
+
+        if isbn:
+            existing_book = Books.objects.filter(isbn=isbn).first()
+            if existing_book:
+                existing_book.stock = (existing_book.stock or 0) + stock_to_add
+                existing_book.save()
+                serializer = self.get_serializer(existing_book)
+                return Response(serializer.data, status=status.HTTP_200_OK)
+
+        return super().create(request, *args, **kwargs)
+
 class AuthorListAPIView(generics.ListCreateAPIView):
     queryset = Authors.objects.all()
     serializer_class = AuthorSerializer
@@ -74,6 +91,8 @@ class LoginAPIView(APIView):
         password = request.data.get('password')
         try:
             user = Users.objects.get(username=username)
+            if user.is_active is False:
+                return Response({'error': 'Tài khoản của bạn đã bị khóa! Vui lòng liên hệ Admin.'}, status=status.HTTP_403_FORBIDDEN)
             if check_password(password, user.password_hash) or user.password_hash == password:
                 return Response({
                     'message': 'Đăng nhập thành công!',

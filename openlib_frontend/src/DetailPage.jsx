@@ -27,6 +27,14 @@ const DetailPage = () => {
   const endpoint = endpointMap[type] || type;
 
   useEffect(() => {
+    // Check role-based permission for members/users management
+    const savedUser = localStorage.getItem('user');
+    const userObj = savedUser ? JSON.parse(savedUser) : null;
+    if ((type === 'members' || type === 'users' || endpoint === 'users') && userObj?.role?.toLowerCase() !== 'admin') {
+      navigate('/403', { replace: true });
+      return;
+    }
+
     const fetchData = async () => {
       try {
         const response = await axios.get(`http://127.0.0.1:8000/api/${endpoint}/${id}/`);
@@ -415,8 +423,9 @@ const DetailPage = () => {
                     renderedValue = val ? '● Đang hoạt động' : '● Bị khóa';
                   } else if (key === 'role') {
                     isBadge = true;
-                    badgeClass = val === 'admin' ? 'badge-danger' : val === 'librarian' ? 'badge-warning' : 'badge-primary';
-                    renderedValue = val === 'admin' ? 'Quản trị viên' : val === 'librarian' ? 'Thủ thư' : 'Thành viên';
+                    const lowerRole = val?.toLowerCase();
+                    badgeClass = lowerRole === 'admin' ? 'badge-danger' : lowerRole === 'librarian' ? 'badge-warning' : 'badge-primary';
+                    renderedValue = lowerRole === 'admin' ? 'Quản trị viên' : lowerRole === 'librarian' ? 'Thủ thư' : 'Thành viên';
                   } else if (key === 'status') {
                     isBadge = true;
                     badgeClass = val === 'approved' ? 'badge-success' : val === 'pending' ? 'badge-warning' : 'badge-danger';
