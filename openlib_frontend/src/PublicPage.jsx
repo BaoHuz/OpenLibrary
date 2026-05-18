@@ -6,8 +6,9 @@ import {
   LibraryBig, PenTool, LayoutDashboard, Quote, ChevronRight, Play,
   X, BookCopy, Users, Award, Clock, Heart, Eye, Filter,
   MapPin, Phone, Mail, CheckCircle, Zap, Shield, Globe, Menu,
-  Bell, CreditCard, History, UserCog, Unlock, Tag
+  Bell, CreditCard, History, UserCog, Unlock, Tag, ShoppingBag
 } from 'lucide-react';
+import { addToCart, getCart, removeFromCart, clearCart, updateCartQuantity } from './cartService';
 import { getImageUrl } from './utils/imageUrl';
 import './App.css';
 
@@ -90,6 +91,20 @@ const BookCard = ({ book, avgRating, onClick, onBorrow, liked, onToggleLike }) =
         <button onClick={e => { e.stopPropagation(); onBorrow(book); }} style={{ background: 'rgba(255,255,255,0.2)', border: '1px solid rgba(255,255,255,0.5)', color: '#fff', borderRadius: '50px', padding: '0.6rem 1.4rem', fontSize: '0.9rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.4rem', transform: 'translateY(16px)', transition: 'transform 0.3s 0.05s' }} className="hover-btn">
           <BookMarked size={14} /> Mượn ngay
         </button>
+        <button onClick={e => { 
+          e.stopPropagation(); 
+          const bookItem = {
+            book_id: book.book_id,
+            title: book.title,
+            author: book.author_name || 'Chưa rõ tác giả',
+            cover_image: book.image ? getImageUrl(book.image) : null
+          };
+          const res = addToCart(bookItem);
+          if (res.error) alert(res.error);
+          else alert(`Đã thêm "${book.title}" vào tủ mượn!`);
+        }} style={{ background: 'rgba(255,255,255,0.2)', border: '1px solid rgba(255,255,255,0.5)', color: '#fff', borderRadius: '50px', padding: '0.6rem 1.4rem', fontSize: '0.9rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.4rem', transform: 'translateY(16px)', transition: 'transform 0.3s 0.1s' }} className="hover-btn">
+          <ShoppingBag size={14} /> Thêm tủ mượn
+        </button>
       </div>
     </div>
     <div>
@@ -136,6 +151,63 @@ const PublicPage = ({ user, onLogout }) => {
   });
   const [isBorrowing, setIsBorrowing] = useState(false);
   const [reviews, setReviews] = useState([]);
+  const [cart, setCart] = useState(getCart());
+
+  useEffect(() => {
+    const handleCartUpdate = () => {
+      setCart(getCart());
+    };
+    window.addEventListener('cart-updated', handleCartUpdate);
+    return () => window.removeEventListener('cart-updated', handleCartUpdate);
+  }, []);
+
+  const handleCartCheckout = async () => {
+    if (!user) {
+      alert('Vui lòng đăng nhập để thực hiện mượn sách!');
+      navigate('/login');
+      return;
+    }
+    if (cart.length === 0) return;
+
+    try {
+      const itemsPayload = cart.map(item => ({
+        book_id: item.book_id,
+        quantity: item.quantity || 1
+      }));
+
+      const response = await fetch(`${API}/borrow_request/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          username: user.username,
+          items: itemsPayload
+        }),
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        alert(data.error || 'Có lỗi xảy ra khi gửi yêu cầu mượn!');
+        return;
+      }
+
+      const totalItemsCount = cart.reduce((sum, item) => sum + (item.quantity || 1), 0);
+      alert(data.message || 'Gửi yêu cầu mượn sách thành công!');
+      clearCart();
+      
+      window.dispatchEvent(new Event('borrow-history-updated'));
+      window.dispatchEvent(new CustomEvent('new-notification', {
+        detail: {
+          title: 'Gửi yêu cầu mượn thành công',
+          content: `Yêu cầu mượn ${totalItemsCount} cuốn sách đã được gửi và đang chờ phê duyệt.`,
+          type: 'success'
+        }
+      }));
+    } catch (error) {
+      alert('Lỗi kết nối đến máy chủ!');
+    }
+  };
 
   const navigate = useNavigate();
   const [heroIndex, setHeroIndex] = useState(0);
@@ -167,11 +239,12 @@ const PublicPage = ({ user, onLogout }) => {
         setReviews(reviewsRes.data || []);
 
         if (user) {
-          setBorrowHistory([
-            { id: 'B1', title: 'Clean Code', borrow_date: '2026-03-15', due_date: '2026-03-30', status: 'borrowing' },
-            { id: 'B2', title: 'Refactoring', borrow_date: '2026-02-10', due_date: '2026-02-25', status: 'returned' },
-            { id: 'B3', title: 'Deep Work', borrow_date: '2026-01-05', due_date: '2026-01-20', status: 'overdue' },
-          ]);
+          try {
+            const histRes = await axios.get(`${API}/borrow_request/?username=${user.username}`);
+            setBorrowHistory(histRes.data || []);
+          } catch (histErr) {
+            console.error('Lỗi tải lịch sử mượn:', histErr);
+          }
           setFines([
             { id: 'F1', book: 'Deep Work', amount: 35000, reason: 'Quá hạn 7 ngày', status: 'unpaid', date: '2026-01-27' },
           ]);
@@ -183,6 +256,49 @@ const PublicPage = ({ user, onLogout }) => {
       }
     };
     load();
+  }, [user]);
+
+  const fetchBorrowHistory = async () => {
+    if (!user) return;
+    try {
+      const res = await axios.get(`${API}/borrow_request/?username=${user.username}`);
+      setBorrowHistory(res.data || []);
+    } catch (err) {
+      console.error('Lỗi tải lịch sử mượn:', err);
+    }
+  };
+
+  const handleCancelRequest = async (ticketId) => {
+    if (!window.confirm('Bạn có chắc chắn muốn hủy yêu cầu mượn này không?')) return;
+    try {
+      const response = await fetch(`${API}/borrow_request/${ticketId}/`, {
+        method: 'DELETE',
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        alert(data.error || 'Có lỗi xảy ra khi hủy yêu cầu!');
+        return;
+      }
+      alert('Đã hủy yêu cầu mượn sách thành công!');
+      window.dispatchEvent(new CustomEvent('new-notification', {
+        detail: {
+          title: 'Hủy yêu cầu thành công',
+          content: `Đã hủy phiếu yêu cầu mượn #${ticketId} thành công.`,
+          type: 'warning'
+        }
+      }));
+      fetchBorrowHistory();
+    } catch (e) {
+      alert('Lỗi kết nối máy chủ!');
+    }
+  };
+
+  useEffect(() => {
+    const handleUpdate = () => {
+      fetchBorrowHistory();
+    };
+    window.addEventListener('borrow-history-updated', handleUpdate);
+    return () => window.removeEventListener('borrow-history-updated', handleUpdate);
   }, [user]);
 
   const bookCount = useCounter(books.length);
@@ -308,6 +424,7 @@ const PublicPage = ({ user, onLogout }) => {
           allauthors:    [{ label: 'Tác Giả', view: 'allauthors' }],
           authordetail:  [{ label: 'Tác Giả', view: 'allauthors' }, { label: selectedAuthor?.name || 'Chi tiết', view: 'authordetail' }],
           profile:       [{ label: 'Hồ sơ', view: 'profile' }],
+          cart:          [{ label: 'Tủ sách mượn tạm', view: 'cart' }],
         };
         const crumbs = crumbMap[currentView] || [];
         return (
@@ -801,6 +918,182 @@ const PublicPage = ({ user, onLogout }) => {
       )}
 
 
+      {/* ══════ DEDICATED CART VIEW ══════ */}
+      {currentView === 'cart' && user && (
+        <div style={{ minHeight: '80vh', padding: '5rem 2rem 4rem' }} className="container">
+          {/* Header section with back button */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2.5rem' }}>
+            <div>
+              <h2 style={{ fontSize: '2rem', fontWeight: 900, color: textPrim, marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                <ShoppingBag size={32} color={accent} /> Tủ sách mượn tạm của bạn
+              </h2>
+              <p style={{ color: textSec, margin: 0, fontSize: '0.95rem' }}>
+                Danh sách sách bạn đã chọn để chuẩn bị mượn ({cart.reduce((sum, item) => sum + (item.quantity || 1), 0)}/5 cuốn)
+              </p>
+            </div>
+            <button 
+              onClick={() => setCurrentView('library')}
+              style={{ background: 'transparent', border: `1px solid ${border}`, color: textSec, padding: '0.6rem 1.2rem', borderRadius: '50px', fontWeight: 700, fontSize: '0.9rem', cursor: 'pointer', transition: 'all 0.2s', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = accent; e.currentTarget.style.color = accent; }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = border; e.currentTarget.style.color = textSec; }}>
+              ← Tiếp tục tìm sách
+            </button>
+          </div>
+
+          {cart.length === 0 ? (
+            /* Empty Cart View */
+            <div style={{ background: surface, borderRadius: '2rem', padding: '5rem 2rem', border: `1px solid ${border}`, boxShadow: '0 10px 30px rgba(0,0,0,0.05)', textAlign: 'center', maxWidth: '600px', margin: '0 auto' }}>
+              <div style={{ fontSize: '4rem', marginBottom: '1.5rem' }}>📚</div>
+              <h3 style={{ fontSize: '1.4rem', fontWeight: 800, color: textPrim, marginBottom: '0.75rem' }}>Tủ sách mượn đang trống!</h3>
+              <p style={{ color: textSec, fontSize: '0.95rem', lineHeight: 1.6, marginBottom: '2rem', maxWidth: '400px', margin: '0 auto 2rem' }}>
+                Hãy duyệt qua hàng ngàn tác phẩm tuyệt vời trong thư viện và thêm chúng vào đây để mượn cùng lúc nhé.
+              </p>
+              <button 
+                onClick={() => setCurrentView('library')}
+                style={{ background: `linear-gradient(135deg, ${accent}, #8b5cf6)`, color: '#fff', border: 'none', padding: '0.85rem 2rem', borderRadius: '50px', fontWeight: 800, fontSize: '0.95rem', cursor: 'pointer', boxShadow: '0 8px 24px rgba(99,102,241,0.25)', transition: 'transform 0.2s' }}
+                onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.04)'}
+                onMouseLeave={e => e.currentTarget.style.transform = ''}>
+                Khám phá thư viện ngay
+              </button>
+            </div>
+          ) : (
+            /* 2-Column Cart Layout */
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 380px', gap: '2.5rem', alignItems: 'start' }}>
+              {/* Left Column: Sách đã chọn */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                {cart.map(item => {
+                  const matchedBook = books.find(b => b.book_id === item.book_id);
+                  const isOutOfStock = matchedBook && matchedBook.stock <= 0;
+                  const itemQty = item.quantity || 1;
+                  return (
+                    <div 
+                      key={item.book_id} 
+                      style={{ background: surface, borderRadius: '1.5rem', padding: '1.5rem', border: `1px solid ${border}`, boxShadow: '0 4px 20px rgba(0,0,0,0.03)', display: 'flex', gap: '1.5rem', alignItems: 'center', transition: 'transform 0.2s, box-shadow 0.2s' }}
+                      onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 10px 25px rgba(0,0,0,0.06)'; }}
+                      onMouseLeave={e => { e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = '0 4px 20px rgba(0,0,0,0.03)'; }}>
+                      {/* Image cover */}
+                      <div style={{ width: '80px', height: '115px', borderRadius: '12px', overflow: 'hidden', flexShrink: 0, boxShadow: '0 5px 15px rgba(0,0,0,0.08)' }}>
+                        {item.cover_image ? (
+                          <img src={item.cover_image} alt={item.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        ) : (
+                          <div style={{ height: '100%', background: `linear-gradient(135deg, ${accent}, #8b5cf6)`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: '0.8rem', fontWeight: 800 }}>Book</div>
+                        )}
+                      </div>
+
+                      {/* Book info */}
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <span style={{ display: 'inline-block', background: 'rgba(99,102,241,0.08)', color: accent, fontSize: '0.75rem', fontWeight: 800, padding: '0.25rem 0.75rem', borderRadius: '50px', marginBottom: '0.5rem' }}>
+                          {matchedBook?.category_name || 'Thể loại'}
+                        </span>
+                        <h4 style={{ fontSize: '1.15rem', fontWeight: 800, color: textPrim, margin: '0 0 0.25rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {item.title}
+                        </h4>
+                        <p style={{ color: textSec, fontSize: '0.88rem', margin: '0 0 0.75rem' }}>
+                          Tác giả: <span style={{ fontWeight: 700 }}>{item.author || 'Chưa rõ'}</span>
+                        </p>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.82rem', fontWeight: 700, color: isOutOfStock ? '#ef4444' : '#10b981' }}>
+                          {isOutOfStock ? '✕ Đã hết sách trong kho' : `✓ Còn ${matchedBook?.stock || 1} cuốn sẵn có`}
+                        </div>
+                      </div>
+
+                      {/* Quantity Selector Control */}
+                      {!isOutOfStock && matchedBook && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', background: '#f1f5f9', borderRadius: '50px', padding: '0.35rem 0.75rem', border: `1px solid ${border}` }}>
+                          <button
+                            onClick={() => {
+                              const res = updateCartQuantity(item.book_id, itemQty - 1);
+                              if (res && res.error) alert(res.error);
+                            }}
+                            style={{ width: '26px', height: '26px', borderRadius: '50%', background: '#fff', border: `1px solid ${border}`, fontSize: '1.1rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'all 0.15s', color: textSec }}
+                            onMouseEnter={e => e.currentTarget.style.borderColor = accent}
+                            onMouseLeave={e => e.currentTarget.style.borderColor = border}>
+                            -
+                          </button>
+                          <span style={{ minWidth: '22px', textAlign: 'center', fontWeight: 800, color: textPrim, fontSize: '0.9rem' }}>
+                            {itemQty}
+                          </span>
+                          <button
+                            onClick={() => {
+                              if (itemQty >= matchedBook.stock) {
+                                alert(`Chỉ còn ${matchedBook.stock} cuốn sẵn có trong kho!`);
+                                return;
+                              }
+                              const res = updateCartQuantity(item.book_id, itemQty + 1);
+                              if (res && res.error) alert(res.error);
+                            }}
+                            style={{ width: '26px', height: '26px', borderRadius: '50%', background: '#fff', border: `1px solid ${border}`, fontSize: '1rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'all 0.15s', color: textSec }}
+                            onMouseEnter={e => e.currentTarget.style.borderColor = accent}
+                            onMouseLeave={e => e.currentTarget.style.borderColor = border}>
+                            +
+                          </button>
+                        </div>
+                      )}
+
+                      {/* Remove Button */}
+                      <button 
+                        onClick={() => removeFromCart(item.book_id)}
+                        style={{ background: '#fef2f2', color: '#ef4444', border: '1px solid #fee2e2', padding: '0.6rem 1.1rem', borderRadius: '12px', fontSize: '0.85rem', fontWeight: 800, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.4rem', transition: 'all 0.2s', flexShrink: 0 }}
+                        onMouseEnter={e => { e.currentTarget.style.background = '#ef4444'; e.currentTarget.style.color = '#fff'; }}
+                        onMouseLeave={e => { e.currentTarget.style.background = '#fef2f2'; e.currentTarget.style.color = '#ef4444'; }}>
+                        Xóa khỏi giỏ
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Right Column: Checkout details card */}
+              <aside style={{ background: surface, borderRadius: '2rem', padding: '2rem', border: `1px solid ${border}`, boxShadow: '0 10px 30px rgba(0,0,0,0.05)', position: 'sticky', top: '100px' }}>
+                <h3 style={{ fontSize: '1.25rem', fontWeight: 900, marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem', color: textPrim }}>
+                  📝 Thông tin phiếu mượn
+                </h3>
+
+                {/* Profile brief */}
+                <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', background: bg, padding: '1rem', borderRadius: '16px', marginBottom: '1.5rem', border: `1px solid ${border}` }}>
+                  <div style={{ width: '42px', height: '42px', borderRadius: '50%', background: `linear-gradient(135deg, ${accent}, #8b5cf6)`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 800 }}>
+                    {(user?.full_name || user?.username || 'U')[0].toUpperCase()}
+                  </div>
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontWeight: 800, fontSize: '0.9rem', color: textPrim, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{user?.full_name || 'Thành viên'}</div>
+                    <div style={{ fontSize: '0.78rem', color: textSec }}>@{user?.username}</div>
+                  </div>
+                </div>
+
+                {/* Terms of borrow */}
+                <div style={{ background: '#eff6ff', borderRadius: '16px', padding: '1rem', marginBottom: '2rem', border: '1px solid #bfdbfe', fontSize: '0.82rem', color: '#1e3a8a', lineHeight: 1.5 }}>
+                  <strong>📌 Quy định mượn sách thư viện:</strong>
+                  <ul style={{ margin: '0.5rem 0 0', paddingLeft: '1.2rem' }}>
+                    <li>Mỗi lượt mượn tối đa 5 cuốn sách.</li>
+                    <li>Sách mượn sẽ có hạn trả mặc định trong vòng 14 ngày.</li>
+                    <li>Vui lòng giữ gìn sách nguyên vẹn, không viết vẽ lên trang sách.</li>
+                  </ul>
+                </div>
+
+                {/* Action Buttons */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                  <button 
+                    onClick={handleCartCheckout}
+                    style={{ width: '100%', background: `linear-gradient(135deg, ${accent}, #8b5cf6)`, color: '#fff', border: 'none', padding: '0.95rem', borderRadius: '14px', fontSize: '0.95rem', fontWeight: 800, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', boxShadow: '0 8px 24px rgba(99,102,241,0.25)', transition: 'all 0.2s' }}
+                    onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-1px)'}
+                    onMouseLeave={e => e.currentTarget.style.transform = ''}>
+                    Xác nhận mượn ({cart.reduce((sum, item) => sum + (item.quantity || 1), 0)} cuốn)
+                  </button>
+
+                  <button 
+                    onClick={() => { if(window.confirm('Bạn có chắc chắn muốn xóa toàn bộ sách đã chọn?')) clearCart(); }}
+                    style={{ width: '100%', background: 'transparent', color: textSec, border: `1px solid ${border}`, padding: '0.8rem', borderRadius: '14px', fontSize: '0.85rem', fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s' }}
+                    onMouseEnter={e => { e.currentTarget.style.background = '#fef2f2'; e.currentTarget.style.color = '#ef4444'; e.currentTarget.style.borderColor = '#fee2e2'; }}
+                    onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = textSec; e.currentTarget.style.borderColor = border; }}>
+                    Xóa tất cả
+                  </button>
+                </div>
+              </aside>
+            </div>
+          )}
+        </div>
+      )}
+
+
       {/* ══════ PROFILE VIEW ══════ */}
       {currentView === 'profile' && user && (
         <div style={{ minHeight: '80vh', padding: '5rem 2rem 4rem' }} className="container">
@@ -856,34 +1149,75 @@ const PublicPage = ({ user, onLogout }) => {
               {activeProfileTab === 'history' && (
                 <div style={{ background: surface, borderRadius: '2rem', padding: '2.5rem', border: `1px solid ${border}`, boxShadow: '0 10px 30px rgba(0,0,0,0.05)' }}>
                   <h3 style={{ fontSize: '1.5rem', fontWeight: 900, marginBottom: '2rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                    <History color={accent} /> Nhật ký mượn sách
+                    <History color={accent} /> Nhật ký mượn sách & Yêu cầu chờ duyệt
                   </h3>
-                  <div style={{ overflowX: 'auto' }}>
-                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                      <thead>
-                        <tr>
-                          <th style={{ textAlign: 'left', padding: '1rem', borderBottom: `2px solid ${border}`, fontSize: '0.8rem', color: textMut, textTransform: 'uppercase' }}>Tên sách</th>
-                          <th style={{ textAlign: 'left', padding: '1rem', borderBottom: `2px solid ${border}`, fontSize: '0.8rem', color: textMut, textTransform: 'uppercase' }}>Ngày mượn</th>
-                          <th style={{ textAlign: 'left', padding: '1rem', borderBottom: `2px solid ${border}`, fontSize: '0.8rem', color: textMut, textTransform: 'uppercase' }}>Hạn trả</th>
-                          <th style={{ textAlign: 'left', padding: '1rem', borderBottom: `2px solid ${border}`, fontSize: '0.8rem', color: textMut, textTransform: 'uppercase' }}>Trạng thái</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {borrowHistory.map(h => (
-                          <tr key={h.id}>
-                            <td style={{ padding: '1rem', borderBottom: `1px solid ${border}`, fontWeight: 700 }}>{h.title}</td>
-                            <td style={{ padding: '1rem', borderBottom: `1px solid ${border}`, color: textSec }}>{h.borrow_date}</td>
-                            <td style={{ padding: '1rem', borderBottom: `1px solid ${border}`, color: textSec }}>{h.due_date}</td>
-                            <td style={{ padding: '1rem', borderBottom: `1px solid ${border}` }}>
-                              <span style={{ padding: '0.3rem 0.8rem', borderRadius: '50px', fontSize: '0.75rem', fontWeight: 800, background: h.status === 'borrowing' ? '#e0e7ff' : (h.status === 'returned' ? '#d1fae5' : '#fee2e2'), color: h.status === 'borrowing' ? accent : (h.status === 'returned' ? '#059669' : '#ef4444') }}>
-                                {h.status === 'borrowing' ? 'Đang mượn' : (h.status === 'returned' ? 'Đã trả' : 'Quá hạn')}
-                              </span>
-                            </td>
+                  {borrowHistory.length === 0 ? (
+                    <div style={{ textAlign: 'center', padding: '3rem 1rem', color: textMut, fontSize: '0.95rem' }}>
+                      <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>📚</div>
+                      Bạn chưa thực hiện yêu cầu mượn sách nào.
+                    </div>
+                  ) : (
+                    <div style={{ overflowX: 'auto' }}>
+                      <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                        <thead>
+                          <tr>
+                            <th style={{ textAlign: 'left', padding: '1rem', borderBottom: `2px solid ${border}`, fontSize: '0.8rem', color: textMut, textTransform: 'uppercase' }}>Mã phiếu</th>
+                            <th style={{ textAlign: 'left', padding: '1rem', borderBottom: `2px solid ${border}`, fontSize: '0.8rem', color: textMut, textTransform: 'uppercase' }}>Danh sách sách</th>
+                            <th style={{ textAlign: 'left', padding: '1rem', borderBottom: `2px solid ${border}`, fontSize: '0.8rem', color: textMut, textTransform: 'uppercase' }}>Ngày mượn / Yêu cầu</th>
+                            <th style={{ textAlign: 'left', padding: '1rem', borderBottom: `2px solid ${border}`, fontSize: '0.8rem', color: textMut, textTransform: 'uppercase' }}>Hạn trả dự kiến</th>
+                            <th style={{ textAlign: 'left', padding: '1rem', borderBottom: `2px solid ${border}`, fontSize: '0.8rem', color: textMut, textTransform: 'uppercase' }}>Trạng thái</th>
+                            <th style={{ textAlign: 'center', padding: '1rem', borderBottom: `2px solid ${border}`, fontSize: '0.8rem', color: textMut, textTransform: 'uppercase' }}>Thao tác</th>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
+                        </thead>
+                        <tbody>
+                          {borrowHistory.map(h => {
+                            const itemsList = h.books || h.details;
+                            const bookTitles = itemsList && itemsList.length > 0 ? itemsList.map(d => d.title || d.book_title || '—').join(', ') : 'Chưa rõ';
+                            const firstDueDate = itemsList && itemsList[0] ? (itemsList[0].due_date || '-') : '-';
+                            const isPending = h.status?.toLowerCase() === 'pending';
+                            const isApproved = h.status?.toLowerCase() === 'active' || h.status?.toLowerCase() === 'approved';
+                            const isReturned = h.status?.toLowerCase() === 'returned' || h.status?.toLowerCase() === 'completed';
+                            const isRejected = h.status?.toLowerCase() === 'rejected';
+                            const isOverdue = h.status?.toLowerCase() === 'overdue';
+
+                            return (
+                              <tr key={h.ticket_id}>
+                                <td style={{ padding: '1.2rem 1rem', borderBottom: `1px solid ${border}`, fontWeight: 800, color: accent }}>#{h.ticket_id}</td>
+                                <td style={{ padding: '1.2rem 1rem', borderBottom: `1px solid ${border}`, fontWeight: 700, maxWidth: '240px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={bookTitles}>{bookTitles}</td>
+                                <td style={{ padding: '1.2rem 1rem', borderBottom: `1px solid ${border}`, color: textSec }}>{h.borrow_date}</td>
+                                <td style={{ padding: '1.2rem 1rem', borderBottom: `1px solid ${border}`, color: textSec }}>{firstDueDate}</td>
+                                <td style={{ padding: '1.2rem 1rem', borderBottom: `1px solid ${border}` }}>
+                                  <span style={{ 
+                                    padding: '0.35rem 0.8rem', 
+                                    borderRadius: '50px', 
+                                    fontSize: '0.75rem', 
+                                    fontWeight: 800, 
+                                    background: isPending ? '#fef3c7' : isApproved ? '#dbeafe' : isReturned ? '#d1fae5' : isRejected ? '#fee2e2' : isOverdue ? '#fee2e2' : '#f1f5f9',
+                                    color: isPending ? '#d97706' : isApproved ? '#2563eb' : isReturned ? '#059669' : isRejected ? '#ef4444' : isOverdue ? '#b91c1c' : '#475569'
+                                  }}>
+                                    {isPending ? 'Chờ duyệt' : isApproved ? 'Đang mượn' : isReturned ? 'Đã trả' : isRejected ? 'Từ chối' : isOverdue ? 'Quá hạn' : h.status}
+                                  </span>
+                                </td>
+                                <td style={{ padding: '1.2rem 1rem', borderBottom: `1px solid ${border}`, textAlign: 'center' }}>
+                                  {isPending ? (
+                                    <button 
+                                      onClick={() => handleCancelRequest(h.ticket_id)}
+                                      style={{ background: '#fef2f2', color: '#ef4444', border: '1px solid #fee2e2', padding: '0.4rem 0.9rem', borderRadius: '8px', fontSize: '0.8rem', fontWeight: 800, cursor: 'pointer', transition: 'all .2s' }}
+                                      onMouseEnter={e => { e.currentTarget.style.background = '#ef4444'; e.currentTarget.style.color = '#fff'; }}
+                                      onMouseLeave={e => { e.currentTarget.style.background = '#fef2f2'; e.currentTarget.style.color = '#ef4444'; }}>
+                                      Hủy yêu cầu
+                                    </button>
+                                  ) : (
+                                    <span style={{ color: textMut, fontSize: '0.85rem' }}>-</span>
+                                  )}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
                 </div>
               )}
 

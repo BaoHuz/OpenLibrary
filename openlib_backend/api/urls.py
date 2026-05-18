@@ -12,6 +12,8 @@ from .views import (
     ReviewListAPIView, ReviewDetailAPIView,
     FineListAPIView, FineDetailAPIView,
     UploadImageAPIView,
+    ExportAPIView, ExportDetailAPIView,
+    ImportAPIView, ImportDetailAPIView
 )
 
 urlpatterns = [
@@ -44,5 +46,14 @@ urlpatterns = [
 
     # Borrow Request (Public user → Admin)
     path('borrow_request/', BorrowRequestAPIView.as_view(), name='borrow-request'),
+    path('borrow_request/<int:ticket_id>/', BorrowRequestAPIView.as_view(), name='borrow-request-detail'),
     path('borrow_request/<int:ticket_id>/approve/', BorrowApproveAPIView.as_view(), name='borrow-approve'),
+
+    # Export Inventory
+    path('export/', ExportAPIView.as_view(), name='export'),
+    path('export/<int:ticket_id>/', ExportDetailAPIView.as_view(), name='export-detail'),
+
+    # Import Inventory
+    path('import/', ImportAPIView.as_view(), name='import'),
+    path('import/<int:ticket_id>/', ImportDetailAPIView.as_view(), name='import-detail'),
 ]

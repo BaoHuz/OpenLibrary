@@ -22,6 +22,7 @@ function App() {
     dashboard: { label: 'Tổng quan', url: 'books/' },
     books: { label: 'Quản lý Sách', url: 'books/' },
     inventory: { label: 'Nhập kho', url: 'books/' },
+    export: { label: 'Xuất kho', url: 'books/' },
     authors: { label: 'Tác giả', url: 'authors/' },
     categories: { label: 'Thể loại', url: 'categories/' },
     members: { label: 'Thành viên', url: 'users/' },
@@ -86,6 +87,7 @@ function App() {
                 <Route path="/" element={<Dashboard activeTab="dashboard" tabs={tabsConfig} />} />
                 <Route path="books" element={<Dashboard activeTab="books" tabs={tabsConfig} />} />
                 <Route path="inventory" element={<Dashboard activeTab="inventory" tabs={tabsConfig} />} />
+                <Route path="export" element={<Dashboard activeTab="export" tabs={tabsConfig} />} />
                 <Route path="authors" element={<Dashboard activeTab="authors" tabs={tabsConfig} />} />
                 <Route path="categories" element={<Dashboard activeTab="categories" tabs={tabsConfig} />} />
                 <Route path="members" element={

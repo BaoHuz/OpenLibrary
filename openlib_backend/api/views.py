@@ -69,8 +69,11 @@ class UserListAPIView(generics.ListCreateAPIView):
     serializer_class = UserSerializer
 
 class BorrowTicketListAPIView(generics.ListCreateAPIView):
-    queryset = BorrowTickets.objects.all()
     serializer_class = BorrowTicketSerializer
+
+    def get_queryset(self):
+        _auto_update_overdue_tickets()
+        return BorrowTickets.objects.all().order_by('-ticket_id')
 
 class PublisherListAPIView(generics.ListCreateAPIView):
     queryset = Publishers.objects.all()
@@ -159,9 +162,12 @@ class UserDetailAPIView(generics.RetrieveUpdateDestroyAPIView):
     lookup_field = 'user_id'
 
 class BorrowTicketDetailAPIView(generics.RetrieveUpdateDestroyAPIView):
-    queryset = BorrowTickets.objects.all()
     serializer_class = BorrowTicketSerializer
     lookup_field = 'ticket_id'
+
+    def get_queryset(self):
+        _auto_update_overdue_tickets()
+        return BorrowTickets.objects.all()
 
 class PublisherDetailAPIView(generics.RetrieveUpdateDestroyAPIView):
     queryset = Publishers.objects.all()
@@ -194,6 +200,23 @@ STATUS_MAP = {
     'overdue':  ['Overdue'],
 }
 
+def _auto_update_overdue_tickets():
+    """Tự động quét và cập nhật trạng thái các phiếu mượn Active đã quá hạn sang Overdue."""
+    from datetime import date
+    try:
+        today = date.today()
+        # Lấy tất cả các phiếu đang Active có ít nhất một cuốn sách quá hạn chưa trả
+        overdue_tickets = BorrowTickets.objects.filter(
+            status='Active',
+            borrowticketdetails__is_returned=False,
+            borrowticketdetails__due_date__lt=today
+        ).distinct()
+        for ticket in overdue_tickets:
+            ticket.status = 'Overdue'
+            ticket.save()
+    except Exception:
+        pass
+
 def _build_ticket_data(t):
     """Serialize một BorrowTicket thành dict cho API response."""
     books_data = []
@@ -206,6 +229,7 @@ def _build_ticket_data(t):
                     'due_date': str(d.due_date),
                     'return_date': str(d.return_date) if d.return_date else None,
                     'is_returned': d.is_returned,
+                    'quantity': getattr(d, 'quantity', 1) or 1,
                 })
             except Exception:
                 continue
@@ -227,16 +251,21 @@ class BorrowRequestAPIView(APIView):
 
     def get(self, request):
         """Admin lấy danh sách yêu cầu theo status."""
-        status_filter = request.GET.get('status', 'pending')
+        username = request.GET.get('username')
+        status_filter = request.GET.get('status', 'all')
         try:
+            _auto_update_overdue_tickets()
+            tickets = BorrowTickets.objects.all()
+            if username:
+                tickets = tickets.filter(member__username=username)
             if status_filter == 'all':
-                tickets = BorrowTickets.objects.all().order_by('-ticket_id')
+                tickets = tickets.order_by('-ticket_id')
             elif status_filter in STATUS_MAP:
-                tickets = BorrowTickets.objects.filter(
+                tickets = tickets.filter(
                     status__in=STATUS_MAP[status_filter]
                 ).order_by('-ticket_id')
             else:
-                tickets = BorrowTickets.objects.filter(
+                tickets = tickets.filter(
                     status__iexact=status_filter
                 ).order_by('-ticket_id')
 
@@ -254,24 +283,101 @@ class BorrowRequestAPIView(APIView):
         """Người dùng gửi yêu cầu mượn sách."""
         username = request.data.get('username')
         book_id  = request.data.get('book_id')
-        if not username or not book_id:
-            return Response({'error': 'Thiếu thông tin username hoặc book_id'}, status=status.HTTP_400_BAD_REQUEST)
+        book_ids = request.data.get('book_ids')
+        items    = request.data.get('items')
+        
+        if not username:
+            return Response({'error': 'Thiếu thông tin username'}, status=status.HTTP_400_BAD_REQUEST)
         try:
             member = Users.objects.get(username=username)
         except Users.DoesNotExist:
             return Response({'error': 'Người dùng không tồn tại'}, status=status.HTTP_404_NOT_FOUND)
-        try:
-            book = Books.objects.get(book_id=book_id)
-        except Books.DoesNotExist:
-            return Response({'error': 'Sách không tồn tại'}, status=status.HTTP_404_NOT_FOUND)
-        if book.stock is not None and book.stock <= 0:
-            return Response({'error': 'Sách đã hết, không thể tạo yêu cầu mượn'}, status=status.HTTP_400_BAD_REQUEST)
-        # Kiểm tra duplicate pending request
-        existing = BorrowTickets.objects.filter(member=member, status='Pending')
-        for ex in existing:
-            if ex.borrowticketdetails_set.filter(book=book).exists():
-                return Response({'error': 'Bạn đã có yêu cầu mượn sách này đang chờ duyệt'}, status=status.HTTP_400_BAD_REQUEST)
+
+        target_items = []  # [{book: BookModel, quantity: int}]
+        
+        if items:
+            if isinstance(items, list):
+                for item in items:
+                    b_id = item.get('book_id')
+                    qty = int(item.get('quantity', 1))
+                    if b_id and qty > 0:
+                        try:
+                            book_obj = Books.objects.get(book_id=b_id)
+                            target_items.append({'book': book_obj, 'quantity': qty})
+                        except Books.DoesNotExist:
+                            return Response({'error': f'Sách ID {b_id} không tồn tại'}, status=status.HTTP_404_NOT_FOUND)
+        else:
+            fallback_ids = []
+            if book_id:
+                fallback_ids.append(book_id)
+            if book_ids:
+                if isinstance(book_ids, list):
+                    fallback_ids.extend(book_ids)
+                else:
+                    try:
+                        import json
+                        parsed = json.loads(book_ids)
+                        if isinstance(parsed, list):
+                            fallback_ids.extend(parsed)
+                    except Exception:
+                        pass
+            
+            seen = set()
+            fallback_ids = [x for x in fallback_ids if not (x in seen or seen.add(x))]
+            for b_id in fallback_ids:
+                try:
+                    book_obj = Books.objects.get(book_id=b_id)
+                    target_items.append({'book': book_obj, 'quantity': 1})
+                except Books.DoesNotExist:
+                    return Response({'error': f'Sách ID {b_id} không tồn tại'}, status=status.HTTP_404_NOT_FOUND)
+
+        if not target_items:
+            return Response({'error': 'Thiếu thông tin sách để tạo yêu cầu mượn'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Check stock and duplicate pending requests
+        existing_tickets = BorrowTickets.objects.filter(member=member, status='Pending')
+        for t_item in target_items:
+            book_obj = t_item['book']
+            qty = t_item['quantity']
+            
+            if book_obj.stock is not None and book_obj.stock < qty:
+                return Response({'error': f'Sách "{book_obj.title}" không đủ tồn kho (còn {book_obj.stock} cuốn)'}, status=status.HTTP_400_BAD_REQUEST)
+                
+            for ex in existing_tickets:
+                if ex.borrowticketdetails_set.filter(book=book_obj).exists():
+                    return Response({'error': f'Bạn đã có yêu cầu mượn sách "{book_obj.title}" đang chờ duyệt'}, status=status.HTTP_400_BAD_REQUEST)
+
         from datetime import date, timedelta
+        from django.db import transaction
+        try:
+            with transaction.atomic():
+                ticket = BorrowTickets.objects.create(
+                    member=member,
+                    librarian=None,
+                    borrow_date=date.today(),
+                    status='Pending'
+                )
+                due = date.today() + timedelta(days=14)
+                for t_item in target_items:
+                    BorrowTicketDetails.objects.create(
+                        ticket=ticket, 
+                        book=t_item['book'], 
+                        due_date=due, 
+                        is_returned=False,
+                        quantity=t_item['quantity']
+                    )
+
+            book_titles_str = ", ".join([f'"{ti["book"].title}" (SL: {ti["quantity"]})' for ti in target_items])
+            return Response({
+                'message': f'Yêu cầu mượn các sách: {book_titles_str} đã được gửi thành công!',
+                'ticket_id': ticket.ticket_id,
+                'status': 'Pending'
+            }, status=status.HTTP_201_CREATED)
+        except Exception as e:
+            return Response({'error': f'Lỗi hệ thống: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        '''
+            from datetime import date, timedelta
         ticket = BorrowTickets.objects.create(
             member=member,
             librarian=None,
@@ -285,6 +391,85 @@ class BorrowRequestAPIView(APIView):
             'ticket_id': ticket.ticket_id,
             'status': 'pending'
         }, status=status.HTTP_201_CREATED)
+        '''
+
+    def put(self, request, ticket_id=None):
+        """Admin chỉnh sửa số lượng hoặc sách trong yêu cầu mượn."""
+        if not ticket_id:
+            return Response({'error': 'Thiếu ticket_id'}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            ticket = BorrowTickets.objects.get(ticket_id=ticket_id)
+        except BorrowTickets.DoesNotExist:
+            return Response({'error': 'Không tìm thấy phiếu mượn'}, status=status.HTTP_404_NOT_FOUND)
+
+        if ticket.status != 'Pending':
+            return Response({'error': 'Chỉ có thể chỉnh sửa yêu cầu ở trạng thái Chờ duyệt (Pending)'}, status=status.HTTP_400_BAD_REQUEST)
+
+        items = request.data.get('items')
+        if not items or not isinstance(items, list):
+            return Response({'error': 'Danh sách sách items không hợp lệ'}, status=status.HTTP_400_BAD_REQUEST)
+
+        parsed_items = []
+        for item in items:
+            b_id = item.get('book_id')
+            qty = int(item.get('quantity', 1))
+            if qty <= 0:
+                continue
+            try:
+                book = Books.objects.get(book_id=b_id)
+            except Books.DoesNotExist:
+                return Response({'error': f'Sách ID {b_id} không tồn tại'}, status=status.HTTP_404_NOT_FOUND)
+            
+            if book.stock is not None and book.stock < qty:
+                return Response({'error': f'Sách "{book.title}" không đủ tồn kho (còn {book.stock} cuốn)'}, status=status.HTTP_400_BAD_REQUEST)
+            
+            parsed_items.append({'book': book, 'quantity': qty})
+
+        if not parsed_items:
+            return Response({'error': 'Phiếu mượn phải chứa ít nhất 1 cuốn sách hợp lệ'}, status=status.HTTP_400_BAD_REQUEST)
+
+        from django.db import transaction
+        try:
+            with transaction.atomic():
+                ticket.borrowticketdetails_set.all().delete()
+                from datetime import date, timedelta
+                due = date.today() + timedelta(days=14)
+                for p in parsed_items:
+                    BorrowTicketDetails.objects.create(
+                        ticket=ticket,
+                        book=p['book'],
+                        due_date=due,
+                        is_returned=False,
+                        quantity=p['quantity']
+                    )
+            return Response({'message': 'Cập nhật yêu cầu mượn thành công!', 'ticket_id': ticket_id})
+        except Exception as e:
+            return Response({'error': f'Lỗi hệ thống: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    def delete(self, request, ticket_id=None):
+        """Hủy yêu cầu mượn sách đang ở trạng thái Chờ duyệt (Pending)."""
+        if not ticket_id:
+            ticket_id = request.data.get('ticket_id') or request.GET.get('ticket_id')
+
+        if not ticket_id:
+            return Response({'error': 'Thiếu thông tin ticket_id'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            ticket = BorrowTickets.objects.get(ticket_id=ticket_id)
+        except BorrowTickets.DoesNotExist:
+            return Response({'error': 'Không tìm thấy phiếu mượn'}, status=status.HTTP_404_NOT_FOUND)
+
+        if ticket.status != 'Pending':
+            return Response({'error': 'Chỉ có thể hủy yêu cầu mượn ở trạng thái Chờ duyệt (Pending)'}, status=status.HTTP_400_BAD_REQUEST)
+
+        from django.db import transaction
+        try:
+            with transaction.atomic():
+                BorrowTicketDetails.objects.filter(ticket=ticket).delete()
+                ticket.delete()
+            return Response({'message': 'Đã hủy yêu cầu mượn sách thành công!'}, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({'error': f'Lỗi khi hủy: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 # ─────────────────────────────────────────────────────────────
@@ -322,8 +507,9 @@ class BorrowApproveAPIView(APIView):
             ticket.save()
             for detail in ticket.borrowticketdetails_set.all():
                 try:
-                    if detail.book and detail.book.stock and detail.book.stock > 0:
-                        detail.book.stock -= 1
+                    if detail.book and detail.book.stock is not None:
+                        qty = getattr(detail, 'quantity', 1) or 1
+                        detail.book.stock = max(0, detail.book.stock - qty)
                         detail.book.save()
                 except Exception:
                     continue
@@ -332,3 +518,280 @@ class BorrowApproveAPIView(APIView):
             ticket.status = 'Rejected'
             ticket.save()
             return Response({'message': 'Yêu cầu đã bị TỪ CHỐI ✗', 'ticket_id': ticket_id, 'status': 'rejected'})
+# POST /api/export/ → Tạo phiếu xuất kho mới
+# ─────────────────────────────────────────────────────────────
+from .models import ExportTickets, ExportTicketDetails
+from .serializers import ExportTicketSerializer
+
+class ExportAPIView(APIView):
+    def get(self, request):
+        tickets = ExportTickets.objects.all().order_by('-ticket_id')
+        serializer = ExportTicketSerializer(tickets, many=True)
+        return Response(serializer.data)
+
+    def post(self, request):
+        data = request.data
+        user_id = data.get('user_id')
+        reason = data.get('reason')
+        notes = data.get('notes')
+        items = data.get('items', [])
+
+        if not items:
+            return Response({'error': 'Danh sách sách xuất kho không được để trống'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            user = Users.objects.get(user_id=user_id) if user_id else None
+        except Users.DoesNotExist:
+            user = None
+
+        # Create Export Ticket
+        ticket = ExportTickets.objects.create(
+            user=user,
+            reason=reason,
+            notes=notes
+        )
+
+        for item in items:
+            book_id = item.get('book_id')
+            quantity = int(item.get('quantity', 0))
+
+            if quantity <= 0:
+                continue
+
+            try:
+                book = Books.objects.get(book_id=book_id)
+                # Deduct stock
+                if book.stock is not None:
+                    if book.stock < quantity:
+                        return Response({'error': f'Sách "{book.title}" không đủ tồn kho (còn {book.stock})'}, status=status.HTTP_400_BAD_REQUEST)
+                    book.stock -= quantity
+                    book.save()
+
+                ExportTicketDetails.objects.create(
+                    ticket=ticket,
+                    book=book,
+                    quantity=quantity
+                )
+            except Books.DoesNotExist:
+                continue
+
+        serializer = ExportTicketSerializer(ticket)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+from django.db import transaction
+
+class ExportDetailAPIView(APIView):
+    def get(self, request, ticket_id):
+        try:
+            ticket = ExportTickets.objects.get(ticket_id=ticket_id)
+            serializer = ExportTicketSerializer(ticket)
+            return Response(serializer.data)
+        except ExportTickets.DoesNotExist:
+            return Response({'error': 'Không tìm thấy phiếu xuất'}, status=status.HTTP_404_NOT_FOUND)
+
+    def put(self, request, ticket_id):
+        try:
+            ticket = ExportTickets.objects.get(ticket_id=ticket_id)
+        except ExportTickets.DoesNotExist:
+            return Response({'error': 'Không tìm thấy phiếu xuất'}, status=status.HTTP_404_NOT_FOUND)
+
+        data = request.data
+        reason = data.get('reason', ticket.reason)
+        notes = data.get('notes', ticket.notes)
+        items = data.get('items')
+
+        with transaction.atomic():
+            ticket.reason = reason
+            ticket.notes = notes
+            ticket.save()
+
+            if items is not None:
+                # Trả lại tồn kho cũ
+                for detail in ticket.exportticketdetails_set.all():
+                    if detail.book and detail.book.stock is not None:
+                        detail.book.stock += detail.quantity
+                        detail.book.save()
+                
+                # Xóa chi tiết cũ
+                ticket.exportticketdetails_set.all().delete()
+
+                # Tạo chi tiết mới và trừ tồn kho
+                for item in items:
+                    book_id = item.get('book_id')
+                    quantity = int(item.get('quantity', 0))
+
+                    if quantity <= 0:
+                        continue
+
+                    try:
+                        book = Books.objects.get(book_id=book_id)
+                        if book.stock is not None:
+                            if book.stock < quantity:
+                                raise ValueError(f'Sách "{book.title}" không đủ tồn kho (còn {book.stock})')
+                            book.stock -= quantity
+                            book.save()
+
+                        ExportTicketDetails.objects.create(
+                            ticket=ticket,
+                            book=book,
+                            quantity=quantity
+                        )
+                    except Books.DoesNotExist:
+                        continue
+                    except ValueError as e:
+                        # Transaction rollback will happen if we raise an exception
+                        return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Refresh ticket data
+        ticket = ExportTickets.objects.get(ticket_id=ticket_id)
+        serializer = ExportTicketSerializer(ticket)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    def delete(self, request, ticket_id):
+        try:
+            ticket = ExportTickets.objects.get(ticket_id=ticket_id)
+            with transaction.atomic():
+                # Trả lại tồn kho
+                for detail in ticket.exportticketdetails_set.all():
+                    if detail.book and detail.book.stock is not None:
+                        detail.book.stock += detail.quantity
+                        detail.book.save()
+                
+                ticket.delete()
+            return Response({'message': 'Xóa phiếu xuất thành công'}, status=status.HTTP_200_OK)
+        except ExportTickets.DoesNotExist:
+            return Response({'error': 'Không tìm thấy phiếu xuất'}, status=status.HTTP_404_NOT_FOUND)
+
+from .models import ImportTickets, ImportTicketDetails
+from .serializers import ImportTicketSerializer
+
+class ImportAPIView(APIView):
+    def get(self, request):
+        tickets = ImportTickets.objects.all().order_by('-ticket_id')
+        serializer = ImportTicketSerializer(tickets, many=True)
+        return Response(serializer.data)
+
+    def post(self, request):
+        data = request.data
+        user_id = data.get('user_id')
+        supplier = data.get('supplier')
+        notes = data.get('notes')
+        total_amount = data.get('total_amount', 0)
+        items = data.get('items', [])
+
+        if not items:
+            return Response({'error': 'Danh sách sách nhập kho không được để trống'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            user = Users.objects.get(user_id=user_id) if user_id else None
+        except Users.DoesNotExist:
+            user = None
+
+        with transaction.atomic():
+            ticket = ImportTickets.objects.create(
+                user=user,
+                supplier=supplier,
+                notes=notes,
+                total_amount=total_amount
+            )
+
+            for item in items:
+                book_id = item.get('book_id')
+                quantity = int(item.get('quantity', 0))
+                unit_price = item.get('unit_price', 0)
+
+                if quantity <= 0:
+                    continue
+
+                try:
+                    book = Books.objects.get(book_id=book_id)
+                    book.stock = (book.stock or 0) + quantity
+                    book.save()
+
+                    ImportTicketDetails.objects.create(
+                        ticket=ticket,
+                        book=book,
+                        quantity=quantity,
+                        unit_price=unit_price
+                    )
+                except Books.DoesNotExist:
+                    continue
+
+        serializer = ImportTicketSerializer(ticket)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+
+class ImportDetailAPIView(APIView):
+    def get(self, request, ticket_id):
+        try:
+            ticket = ImportTickets.objects.get(ticket_id=ticket_id)
+            serializer = ImportTicketSerializer(ticket)
+            return Response(serializer.data)
+        except ImportTickets.DoesNotExist:
+            return Response({'error': 'Không tìm thấy phiếu nhập'}, status=status.HTTP_404_NOT_FOUND)
+
+    def put(self, request, ticket_id):
+        try:
+            ticket = ImportTickets.objects.get(ticket_id=ticket_id)
+        except ImportTickets.DoesNotExist:
+            return Response({'error': 'Không tìm thấy phiếu nhập'}, status=status.HTTP_404_NOT_FOUND)
+
+        data = request.data
+        supplier = data.get('supplier', ticket.supplier)
+        notes = data.get('notes', ticket.notes)
+        total_amount = data.get('total_amount', ticket.total_amount)
+        items = data.get('items')
+
+        with transaction.atomic():
+            ticket.supplier = supplier
+            ticket.notes = notes
+            ticket.total_amount = total_amount
+            ticket.save()
+
+            if items is not None:
+                for detail in ticket.importticketdetails_set.all():
+                    if detail.book and detail.book.stock is not None:
+                        detail.book.stock = max(0, detail.book.stock - detail.quantity)
+                        detail.book.save()
+                
+                ticket.importticketdetails_set.all().delete()
+
+                for item in items:
+                    book_id = item.get('book_id')
+                    quantity = int(item.get('quantity', 0))
+                    unit_price = item.get('unit_price', 0)
+
+                    if quantity <= 0:
+                        continue
+
+                    try:
+                        book = Books.objects.get(book_id=book_id)
+                        book.stock = (book.stock or 0) + quantity
+                        book.save()
+
+                        ImportTicketDetails.objects.create(
+                            ticket=ticket,
+                            book=book,
+                            quantity=quantity,
+                            unit_price=unit_price
+                        )
+                    except Books.DoesNotExist:
+                        continue
+
+        ticket = ImportTickets.objects.get(ticket_id=ticket_id)
+        serializer = ImportTicketSerializer(ticket)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    def delete(self, request, ticket_id):
+        try:
+            ticket = ImportTickets.objects.get(ticket_id=ticket_id)
+            with transaction.atomic():
+                for detail in ticket.importticketdetails_set.all():
+                    if detail.book and detail.book.stock is not None:
+                        detail.book.stock = max(0, detail.book.stock - detail.quantity)
+                        detail.book.save()
+                
+                ticket.delete()
+            return Response({'message': 'Xóa phiếu nhập thành công'}, status=status.HTTP_200_OK)
+        except ImportTickets.DoesNotExist:
+            return Response({'error': 'Không tìm thấy phiếu nhập'}, status=status.HTTP_404_NOT_FOUND)

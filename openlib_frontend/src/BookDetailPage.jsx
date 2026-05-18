@@ -4,8 +4,9 @@ import axios from 'axios';
 import {
   ArrowLeft, BookOpen, Star, BookMarked, Heart, Share2, PenTool,
   Building2, Hash, Tag, Package, ChevronRight, Quote, Send,
-  ThumbsUp, Clock, Award, TrendingUp, Eye
+  ThumbsUp, Clock, Award, TrendingUp, Eye, ShoppingBag
 } from 'lucide-react';
+import { addToCart } from './cartService';
 import { getImageUrl } from './utils/imageUrl';
 import './App.css';
 
@@ -209,6 +210,21 @@ const BookDetailPage = ({ user }) => {
     setTimeout(() => setBorrowStatus(null), 6000);
   };
 
+  const handleAddToCart = () => {
+    const bookItem = {
+      book_id: book.book_id,
+      title: book.title,
+      author: book.author_details?.name || book.author_name || 'Chưa rõ tác giả',
+      cover_image: book.image ? getImageUrl(book.image) : null
+    };
+    const res = addToCart(bookItem);
+    if (res.error) {
+      alert(res.error);
+    } else {
+      alert(`Đã thêm sách "${book.title}" vào giỏ mượn thành công!`);
+    }
+  };
+
   const handleSubmitReview = async () => {
     if (!user) { navigate('/login'); return; }
     if (userHasReviewed) { setSubmitMsg('⚠️ Bạn đã đánh giá sách này rồi.'); return; }
@@ -328,6 +344,28 @@ const BookDetailPage = ({ user }) => {
                 ) : (
                   <><BookMarked size={18} /> Mượn ngay</>
                 )}
+              </button>
+              <button
+                onClick={handleAddToCart}
+                style={{
+                  padding: '0 1rem',
+                  background: 'rgba(99,102,241,0.06)',
+                  color: C.accent,
+                  border: `1.5px solid ${C.accent}`,
+                  borderRadius: '12px',
+                  fontWeight: 800,
+                  fontSize: '0.9rem',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '0.4rem',
+                  transition: 'all .2s'
+                }}
+                onMouseEnter={e => { e.currentTarget.style.background = 'rgba(99,102,241,0.12)'; }}
+                onMouseLeave={e => { e.currentTarget.style.background = 'rgba(99,102,241,0.06)'; }}
+              >
+                <ShoppingBag size={18} /> Thêm tủ mượn
               </button>
               <button
                 onClick={handleToggleLike}

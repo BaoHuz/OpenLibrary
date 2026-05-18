@@ -1,4 +1,5 @@
 from rest_framework import serializers
+# pyrefly: ignore [missing-import]
 from .models import Books, Authors, Categories, Users, BorrowTickets, BorrowTicketDetails, Publishers, Reviews, Fines
 
 class AuthorSerializer(serializers.ModelSerializer):
@@ -67,7 +68,7 @@ class BorrowTicketDetailSerializer(serializers.ModelSerializer):
     book_title = serializers.ReadOnlyField(source='book.title')
     class Meta:
         model = BorrowTicketDetails
-        fields = ['book', 'book_title', 'due_date', 'return_date', 'is_returned']
+        fields = ['book', 'book_title', 'due_date', 'return_date', 'is_returned', 'quantity']
 
 class BorrowTicketSerializer(serializers.ModelSerializer):
     member_name = serializers.ReadOnlyField(source='member.full_name')
@@ -76,4 +77,36 @@ class BorrowTicketSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = BorrowTickets
+        fields = '__all__'
+
+from .models import ExportTickets, ExportTicketDetails
+
+class ExportTicketDetailSerializer(serializers.ModelSerializer):
+    book_title = serializers.ReadOnlyField(source='book.title')
+    class Meta:
+        model = ExportTicketDetails
+        fields = ['book', 'book_title', 'quantity']
+
+class ExportTicketSerializer(serializers.ModelSerializer):
+    user_name = serializers.ReadOnlyField(source='user.full_name')
+    details = ExportTicketDetailSerializer(many=True, read_only=True, source='exportticketdetails_set')
+
+    class Meta:
+        model = ExportTickets
+        fields = '__all__'
+
+from .models import ImportTickets, ImportTicketDetails
+
+class ImportTicketDetailSerializer(serializers.ModelSerializer):
+    book_title = serializers.ReadOnlyField(source='book.title')
+    class Meta:
+        model = ImportTicketDetails
+        fields = ['book', 'book_title', 'quantity', 'unit_price']
+
+class ImportTicketSerializer(serializers.ModelSerializer):
+    user_name = serializers.ReadOnlyField(source='user.full_name')
+    details = ImportTicketDetailSerializer(many=True, read_only=True, source='importticketdetails_set')
+
+    class Meta:
+        model = ImportTickets
         fields = '__all__'

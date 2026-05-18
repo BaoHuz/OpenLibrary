@@ -56,6 +56,7 @@ class BorrowTicketDetails(models.Model):
     due_date = models.DateField()
     return_date = models.DateField(blank=True, null=True)
     is_returned = models.BooleanField(blank=True, null=True)
+    quantity = models.IntegerField(default=1, validators=[MinValueValidator(1)])
 
     class Meta:
         managed = True
@@ -134,3 +135,51 @@ class Fines(models.Model):
     class Meta:
         managed = True
         db_table = 'fines'
+
+
+class ImportTickets(models.Model):
+    ticket_id = models.AutoField(primary_key=True)
+    user = models.ForeignKey(Users, models.DO_NOTHING, blank=True, null=True)
+    import_date = models.DateTimeField(auto_now_add=True, blank=True, null=True)
+    total_amount = models.DecimalField(max_digits=12, decimal_places=2, blank=True, null=True)
+    supplier = models.CharField(max_length=255, blank=True, null=True)
+    notes = models.TextField(blank=True, null=True)
+
+    class Meta:
+        managed = True
+        db_table = 'import_tickets'
+
+
+class ImportTicketDetails(models.Model):
+    detail_id = models.AutoField(primary_key=True)
+    ticket = models.ForeignKey(ImportTickets, models.DO_NOTHING)
+    book = models.ForeignKey(Books, models.DO_NOTHING)
+    quantity = models.IntegerField(validators=[MinValueValidator(1)])
+    unit_price = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True)
+
+    class Meta:
+        managed = True
+        db_table = 'import_ticket_details'
+
+
+class ExportTickets(models.Model):
+    ticket_id = models.AutoField(primary_key=True)
+    user = models.ForeignKey(Users, models.DO_NOTHING, blank=True, null=True)
+    export_date = models.DateTimeField(auto_now_add=True, blank=True, null=True)
+    reason = models.CharField(max_length=255, blank=True, null=True)
+    notes = models.TextField(blank=True, null=True)
+
+    class Meta:
+        managed = True
+        db_table = 'export_tickets'
+
+
+class ExportTicketDetails(models.Model):
+    detail_id = models.AutoField(primary_key=True)
+    ticket = models.ForeignKey(ExportTickets, models.DO_NOTHING)
+    book = models.ForeignKey(Books, models.DO_NOTHING)
+    quantity = models.IntegerField(validators=[MinValueValidator(1)])
+
+    class Meta:
+        managed = True
+        db_table = 'export_ticket_details'

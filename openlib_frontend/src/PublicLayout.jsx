@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
-import { LogIn, Bell, LayoutDashboard, Search } from 'lucide-react';
+import { LogIn, Bell, LayoutDashboard, Search, ShoppingBag, Trash2 } from 'lucide-react';
+import { getCart, removeFromCart, clearCart } from './cartService';
 
 const PublicLayout = ({ user, onLogout }) => {
   const navigate = useNavigate();
@@ -10,12 +11,60 @@ const PublicLayout = ({ user, onLogout }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [showNotif, setShowNotif] = useState(false);
+  const [cart, setCart] = useState(getCart());
+  const [showCart, setShowCart] = useState(false);
+
+  React.useEffect(() => {
+    const handleUpdate = () => {
+      setCart(getCart());
+    };
+    window.addEventListener('cart-updated', handleUpdate);
+    return () => window.removeEventListener('cart-updated', handleUpdate);
+  }, []);
   
-  const [notifications, setNotifications] = useState([
-    { id: 1, title: 'Yêu cầu mượn đã duyệt', content: 'Sách "Clean Code" đã sẵn sàng để lấy.', time: '2 giờ trước', read: false, type: 'success' },
-    { id: 2, title: 'Nhắc nhở trả sách', content: 'Bạn có cuốn "Refactoring" sắp đến hạn trả.', time: '1 ngày trước', read: false, type: 'warning' },
-    { id: 3, title: 'Phát sinh khoản phạt', content: 'Đã phát sinh 20.000đ phí quá hạn.', time: '3 ngày trước', read: true, type: 'error' },
-  ]);
+  const [notifications, setNotifications] = useState(() => {
+    try {
+      const stored = localStorage.getItem(`notifs_${user?.username || 'guest'}`);
+      return stored ? JSON.parse(stored) : [
+        { id: 1, title: 'Yêu cầu mượn đã duyệt', content: 'Sách "Clean Code" đã sẵn sàng để lấy.', time: '2 giờ trước', read: false, type: 'success' },
+        { id: 2, title: 'Nhắc nhở trả sách', content: 'Bạn có cuốn "Refactoring" sắp đến hạn trả.', time: '1 ngày trước', read: false, type: 'warning' },
+        { id: 3, title: 'Phát sinh khoản phạt', content: 'Đã phát sinh 20.000đ phí quá hạn.', time: '3 ngày trước', read: true, type: 'error' },
+      ];
+    } catch {
+      return [
+        { id: 1, title: 'Yêu cầu mượn đã duyệt', content: 'Sách "Clean Code" đã sẵn sàng để lấy.', time: '2 giờ trước', read: false, type: 'success' },
+        { id: 2, title: 'Nhắc nhở trả sách', content: 'Bạn có cuốn "Refactoring" sắp đến hạn trả.', time: '1 ngày trước', read: false, type: 'warning' },
+        { id: 3, title: 'Phát sinh khoản phạt', content: 'Đã phát sinh 20.000đ phí quá hạn.', time: '3 ngày trước', read: true, type: 'error' },
+      ];
+    }
+  });
+
+  React.useEffect(() => {
+    try {
+      localStorage.setItem(`notifs_${user?.username || 'guest'}`, JSON.stringify(notifications));
+    } catch (e) {
+      console.error(e);
+    }
+  }, [notifications, user]);
+
+  React.useEffect(() => {
+    const handleNewNotif = (e) => {
+      const { title, content, type } = e.detail || {};
+      if (title && content) {
+        const notif = {
+          id: Date.now(),
+          title,
+          content,
+          time: 'Vừa xong',
+          read: false,
+          type: type || 'success'
+        };
+        setNotifications(prev => [notif, ...prev]);
+      }
+    };
+    window.addEventListener('new-notification', handleNewNotif);
+    return () => window.removeEventListener('new-notification', handleNewNotif);
+  }, []);
 
   const handleNavClick = (view) => {
     setCurrentView(view);
@@ -36,6 +85,52 @@ const PublicLayout = ({ user, onLogout }) => {
       navigate('/');
     } else {
       window.scrollTo(0, 0);
+    }
+  };
+
+  const handleCheckout = async () => {
+    if (!user) {
+      alert('Vui lòng đăng nhập để thực hiện mượn sách!');
+      navigate('/login');
+      return;
+    }
+    if (cart.length === 0) return;
+
+    try {
+      const response = await fetch('http://127.0.0.1:8000/api/borrow_request/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          username: user.username,
+          book_ids: cart.map(item => item.book_id)
+        }),
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        alert(data.error || 'Có lỗi xảy ra khi gửi yêu cầu mượn!');
+        return;
+      }
+
+      alert(data.message || 'Gửi yêu cầu mượn sách thành công!');
+      clearCart();
+      setShowCart(false);
+      
+      window.dispatchEvent(new Event('borrow-history-updated'));
+      
+      const newNotif = {
+        id: Date.now(),
+        title: 'Gửi yêu cầu mượn thành công',
+        content: `Yêu cầu mượn ${cart.length} cuốn sách đã được gửi và đang chờ phê duyệt.`,
+        time: 'Vừa xong',
+        read: false,
+        type: 'success'
+      };
+      setNotifications(prev => [newNotif, ...prev]);
+    } catch (error) {
+      alert('Lỗi kết nối đến máy chủ!');
     }
   };
 
@@ -117,6 +212,70 @@ const PublicLayout = ({ user, onLogout }) => {
           <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
             {user ? (
                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                {/* Cart Icon & Popover */}
+                <div style={{ position: 'relative' }}>
+                  <button 
+                    onClick={() => { handleNavClick('cart'); setShowNotif(false); }}
+                    style={{ background: 'none', border: 'none', color: textSec, cursor: 'pointer', display: 'flex', position: 'relative', padding: '5px', alignItems: 'center' }}>
+                    <ShoppingBag size={22} style={{ color: cart.length > 0 ? accent : textSec }} />
+                    {cart.length > 0 && (
+                      <div style={{ position: 'absolute', top: -2, right: -4, background: '#ff5a5f', color: '#fff', fontSize: '0.65rem', fontWeight: 800, minWidth: '16px', height: '16px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 2px', border: '2px solid #fff' }}>
+                        {cart.length}
+                      </div>
+                    )}
+                  </button>
+                  {false && (
+                    <div style={{ position: 'absolute', top: '100%', right: 0, width: '340px', background: '#fff', boxShadow: '0 15px 35px rgba(0,0,0,0.15)', borderRadius: '1rem', marginTop: '1rem', zIndex: 1000, padding: '1.2rem', border: `1px solid ${border}` }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem', alignItems: 'center' }}>
+                        <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 800 }}>Tủ sách mượn tạm ({cart.length}/5)</h4>
+                        {cart.length > 0 && (
+                          <span 
+                            onClick={() => clearCart()}
+                            style={{ fontSize: '0.75rem', color: '#ef4444', cursor: 'pointer', fontWeight: 700 }}>Xóa tất cả</span>
+                        )}
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem', maxHeight: '280px', overflowY: 'auto', marginBottom: cart.length > 0 ? '1.2rem' : 0 }}>
+                        {cart.length === 0 ? (
+                          <div style={{ textAlign: 'center', padding: '2rem 1rem', color: textMut, fontSize: '0.88rem' }}>
+                            <div style={{ fontSize: '1.5rem', marginBottom: '0.5rem' }}>📚</div>
+                            Tủ sách đang trống.<br/>Hãy thêm sách bạn thích vào đây để mượn cùng lúc!
+                          </div>
+                        ) : (
+                          cart.map(item => (
+                            <div key={item.book_id} style={{ display: 'flex', gap: '0.7rem', alignItems: 'center', paddingBottom: '0.8rem', borderBottom: `1px solid ${border}` }}>
+                              {item.cover_image ? (
+                                <img src={item.cover_image} alt={item.title} style={{ width: '38px', height: '54px', borderRadius: '4px', objectFit: 'cover', boxShadow: '0 2px 5px rgba(0,0,0,0.1)' }} />
+                              ) : (
+                                <div style={{ width: '38px', height: '54px', borderRadius: '4px', background: `linear-gradient(135deg, ${accent}, #8b5cf6)`, color: '#fff', fontSize: '0.65rem', fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2px', textAlign: 'center' }}>
+                                  Book
+                                </div>
+                              )}
+                              <div style={{ flex: 1, minWidth: 0 }}>
+                                <div style={{ fontWeight: 800, fontSize: '0.85rem', color: textPrim, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.title}</div>
+                                <div style={{ fontSize: '0.78rem', color: textSec, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: '0.1rem' }}>{item.author || 'Chưa rõ tác giả'}</div>
+                              </div>
+                              <button 
+                                onClick={() => removeFromCart(item.book_id)}
+                                style={{ background: 'none', border: 'none', color: '#cbd5e1', cursor: 'pointer', padding: '5px', transition: 'all .2s' }}
+                                onMouseEnter={e => e.currentTarget.style.color = '#ef4444'}
+                                onMouseLeave={e => e.currentTarget.style.color = '#cbd5e1'}>
+                                <Trash2 size={16} />
+                              </button>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                      {cart.length > 0 && (
+                        <button 
+                          onClick={handleCheckout}
+                          style={{ width: '100%', background: `linear-gradient(135deg, ${accent}, #8b5cf6)`, color: '#fff', border: 'none', padding: '0.75rem', borderRadius: '12px', fontSize: '0.85rem', fontWeight: 800, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem', boxShadow: '0 4px 15px rgba(99,102,241,0.3)', transition: 'all .2s' }}>
+                          Mượn sách đã chọn ({cart.length})
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
+
                 <div style={{ position: 'relative' }}>
                   <button 
                     onClick={() => setShowNotif(!showNotif)}

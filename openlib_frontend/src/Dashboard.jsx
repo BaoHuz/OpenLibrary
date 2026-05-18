@@ -11,7 +11,8 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { getImageUrl } from './utils/imageUrl';
 import Select from 'react-select';
-
+import ExportPanel from './ExportPanel';
+import ImportPanel from './ImportPanel';
 const stripHtml = (html) => {
   if (!html) return '';
   const doc = new DOMParser().parseFromString(html, 'text/html');
@@ -81,6 +82,32 @@ const BorrowRequestsPanel = () => {
   const [processing,   setProcessing]   = useState({});
   const [msgs,         setMsgs]         = useState({});
   const [search,       setSearch]       = useState('');
+  const [editingTicketId, setEditingTicketId] = useState(null);
+  const [editingBooks, setEditingBooks] = useState([]);
+  const [savingTicket, setSavingTicket] = useState(false);
+
+  const handleSaveEdit = async (ticketId) => {
+    if (editingBooks.length === 0) {
+      alert('Phiếu mượn phải chứa ít nhất 1 cuốn sách!');
+      return;
+    }
+    setSavingTicket(true);
+    try {
+      const res = await axios.put(`http://127.0.0.1:8000/api/borrow_request/${ticketId}/`, {
+        items: editingBooks.map(b => ({ book_id: b.book_id, quantity: b.quantity || 1 }))
+      });
+      alert(res.data.message || 'Cập nhật thành công!');
+      setEditingTicketId(null);
+      setEditingBooks([]);
+      // Refresh
+      fetchTab('pending');
+      fetchTab('all');
+    } catch (err) {
+      alert(err.response?.data?.error || 'Có lỗi xảy ra khi cập nhật!');
+    } finally {
+      setSavingTicket(false);
+    }
+  };
 
   /* ── Fetch một status tab ── */
   const fetchTab = async (statusKey) => {
@@ -325,11 +352,6 @@ const BorrowRequestsPanel = () => {
                   <div style={{ flex: 1, minWidth: '240px' }}>
                     {/* Book title(s) + status badge + ID */}
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.3rem', flexWrap: 'wrap' }}>
-                      <span style={{ fontWeight: 800, fontSize: '0.975rem', color: 'var(--text-primary)' }}>
-                        {ticket.books?.length > 0
-                          ? ticket.books.map(b => b.title).join(' · ')
-                          : '(Không rõ sách)'}
-                      </span>
                       <span style={{
                         padding: '0.15rem 0.65rem', borderRadius: '50px',
                         fontSize: '0.7rem', fontWeight: 800,
@@ -341,6 +363,74 @@ const BorrowRequestsPanel = () => {
                         #{ticket.ticket_id}
                       </span>
                     </div>
+
+                    {editingTicketId === ticket.ticket_id ? (
+                      /* Editing Mode Form */
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem', marginTop: '0.5rem', marginBottom: '1rem', background: 'var(--table-border)', padding: '1rem', borderRadius: '12px', maxWidth: '500px' }}>
+                        <div style={{ fontWeight: 800, fontSize: '0.78rem', color: 'var(--text-secondary)' }}>✏️ ĐANG CHỈNH SỬA PHIẾU MƯỢN</div>
+                        {editingBooks.map(b => (
+                          <div key={b.book_id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', background: 'var(--card-bg)', padding: '0.4rem 0.8rem', borderRadius: '8px' }}>
+                            <span style={{ fontWeight: 700, fontSize: '0.82rem', color: 'var(--text-primary)', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap', maxWidth: '240px' }}>📖 {b.title}</span>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexShrink: 0 }}>
+                              <button
+                                onClick={() => {
+                                  const updated = editingBooks.map(x => x.book_id === b.book_id ? { ...x, quantity: Math.max(1, (x.quantity || 1) - 1) } : x);
+                                  setEditingBooks(updated);
+                                }}
+                                style={{ width: '22px', height: '22px', borderRadius: '50%', border: '1px solid var(--table-border)', background: 'transparent', cursor: 'pointer', color: 'var(--text-primary)', fontWeight: 'bold', fontSize: '0.9rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                -
+                              </button>
+                              <span style={{ fontWeight: 800, fontSize: '0.82rem', minWidth: '18px', textAlign: 'center' }}>{b.quantity || 1}</span>
+                              <button
+                                onClick={() => {
+                                  const updated = editingBooks.map(x => x.book_id === b.book_id ? { ...x, quantity: (x.quantity || 1) + 1 } : x);
+                                  setEditingBooks(updated);
+                                }}
+                                style={{ width: '22px', height: '22px', borderRadius: '50%', border: '1px solid var(--table-border)', background: 'transparent', cursor: 'pointer', color: 'var(--text-primary)', fontWeight: 'bold', fontSize: '0.8rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                +
+                              </button>
+                              <button
+                                onClick={() => {
+                                  const updated = editingBooks.filter(x => x.book_id !== b.book_id);
+                                  setEditingBooks(updated);
+                                }}
+                                style={{ marginLeft: '0.5rem', background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444', display: 'flex', alignItems: 'center' }}>
+                                <Trash2 size={15} />
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                        <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.3rem' }}>
+                          <button
+                            onClick={() => handleSaveEdit(ticket.ticket_id)}
+                            disabled={savingTicket}
+                            style={{ background: 'var(--accent)', color: '#fff', border: 'none', padding: '0.4rem 0.9rem', borderRadius: '6px', fontWeight: 800, fontSize: '0.78rem', cursor: 'pointer' }}>
+                            {savingTicket ? 'Đang lưu...' : 'Lưu'}
+                          </button>
+                          <button
+                            onClick={() => { setEditingTicketId(null); setEditingBooks([]); }}
+                            style={{ background: 'transparent', color: 'var(--text-secondary)', border: '1px solid var(--table-border)', padding: '0.4rem 0.9rem', borderRadius: '6px', fontWeight: 700, fontSize: '0.78rem', cursor: 'pointer' }}>
+                            Hủy
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      /* Normal Detailed Books List */
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', marginTop: '0.5rem', marginBottom: '0.6rem' }}>
+                        {ticket.books?.length > 0 ? (
+                          ticket.books.map(b => (
+                            <div key={b.book_id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'var(--table-border)', padding: '0.25rem 0.75rem', borderRadius: '8px', width: 'fit-content', fontSize: '0.82rem' }}>
+                              <span style={{ fontWeight: 700, color: 'var(--text-primary)' }}>📖 {b.title}</span>
+                              <span style={{ background: 'var(--accent)', color: '#fff', fontSize: '0.7rem', fontWeight: 800, padding: '0.05rem 0.4rem', borderRadius: '50px' }}>
+                                SL: {b.quantity || 1}
+                              </span>
+                            </div>
+                          ))
+                        ) : (
+                          <span style={{ fontStyle: 'italic', color: 'var(--text-secondary)', fontSize: '0.85rem' }}>(Không rõ sách)</span>
+                        )}
+                      </div>
+                    )}
 
                     {/* Meta row */}
                     <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', display: 'flex', gap: '1.25rem', flexWrap: 'wrap', marginBottom: '0.4rem' }}>
@@ -383,8 +473,29 @@ const BorrowRequestsPanel = () => {
                   )}
 
                   {/* Action buttons — chỉ hiện khi pending */}
-                  {isPending && !msgs[ticket.ticket_id] && (
+                  {isPending && !msgs[ticket.ticket_id] && editingTicketId !== ticket.ticket_id && (
                     <div style={{ display: 'flex', gap: '0.6rem', flexShrink: 0, alignSelf: 'center' }}>
+                      <button
+                        onClick={() => {
+                          setEditingTicketId(ticket.ticket_id);
+                          setEditingBooks(ticket.books.map(b => ({ ...b })));
+                        }}
+                        disabled={!!processing[ticket.ticket_id]}
+                        style={{
+                          background: 'var(--card-bg)', color: '#4f46e5',
+                          border: '1.5px solid #c7d2fe',
+                          padding: '0.55rem 1.15rem', borderRadius: '9px',
+                          fontWeight: 800, fontSize: '0.82rem',
+                          cursor: processing[ticket.ticket_id] ? 'not-allowed' : 'pointer',
+                          display: 'flex', alignItems: 'center', gap: '0.3rem',
+                          opacity: processing[ticket.ticket_id] ? 0.65 : 1,
+                          transition: 'all .2s',
+                        }}
+                        onMouseEnter={e => { if (!processing[ticket.ticket_id]) { e.currentTarget.style.background = '#e0e7ff'; e.currentTarget.style.transform = 'translateY(-2px)'; } }}
+                        onMouseLeave={e => { e.currentTarget.style.background = 'var(--card-bg)'; e.currentTarget.style.transform = ''; }}
+                      >
+                        <Edit3 size={14} /> Sửa
+                      </button>
                       <button
                         onClick={() => handleAction(ticket.ticket_id, 'approve')}
                         disabled={!!processing[ticket.ticket_id]}
@@ -1367,7 +1478,16 @@ const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
   if (activeTab === 'inventory') {
     return (
       <div className="dashboard-wrapper">
-        <InventoryPanel />
+        <ImportPanel />
+      </div>
+    );
+  }
+
+  /* ══ Nếu đang ở tab Xuất kho → render panel riêng ══ */
+  if (activeTab === 'export') {
+    return (
+      <div className="dashboard-wrapper">
+        <ExportPanel />
       </div>
     );
   }

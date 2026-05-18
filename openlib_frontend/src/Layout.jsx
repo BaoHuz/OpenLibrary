@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  Library, LayoutDashboard, BookOpen, Users, Tag, ClipboardList, Settings, LogOut, Bell, User, ChevronDown, Mail, Globe, MapPin, Palette, Building, Star, AlertTriangle, Inbox, Home, Download
+  Library, LayoutDashboard, BookOpen, Users, Tag, ClipboardList, Settings, LogOut, Bell, User, ChevronDown, Mail, Globe, MapPin, Palette, Building, Star, AlertTriangle, Inbox, Home, Download, Upload
 } from 'lucide-react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import axios from 'axios';
@@ -24,7 +24,7 @@ const Layout = ({ children, user, onLogout }) => {
   useEffect(() => {
     const fetchPending = async () => {
       try {
-        const res = await axios.get('http://127.0.0.1:8000/api/borrow_request/');
+        const res = await axios.get('http://127.0.0.1:8000/api/borrow_request/?status=pending');
         setPendingCount(Array.isArray(res.data) ? res.data.length : 0);
       } catch { /* silent */ }
     };
@@ -43,6 +43,7 @@ const Layout = ({ children, user, onLogout }) => {
     { key: 'dashboard', label: 'Tổng quan', icon: LayoutDashboard, path: '/admin' },
     { key: 'books', label: 'Quản lý Sách', icon: BookOpen, path: '/admin/books' },
     { key: 'inventory', label: 'Nhập kho', icon: Download, path: '/admin/inventory' },
+    { key: 'export', label: 'Xuất kho', icon: Upload, path: '/admin/export' },
     { key: 'authors', label: 'Tác giả', icon: Users, path: '/admin/authors' },
     { key: 'categories', label: 'Thể loại', icon: Tag, path: '/admin/categories' },
     user?.role?.toLowerCase() === 'admin' && { key: 'members', label: 'Thành viên', icon: Users, path: '/admin/members' },
