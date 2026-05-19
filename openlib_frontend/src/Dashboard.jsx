@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import axios from 'axios';
 import { 
-  Library, LayoutDashboard, BookOpen, Users, Tag, Plus, Search, MoreVertical, Edit3, Trash2, Eye, ChevronRight, Book, Loader2, AlertCircle, TrendingUp, Filter, Download
+  Library, LayoutDashboard, BookOpen, Users, User, Tag, Plus, Search, MoreVertical, Edit3, Trash2, Eye, ChevronRight, Book, Loader2, AlertCircle, TrendingUp, Filter, Download
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -1372,6 +1372,39 @@ const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
     setSortConfig({ key, direction });
   };
 
+  const handleExportFines = () => {
+    if (activeTab !== 'fines') return;
+    
+    // Header columns in Vietnamese
+    const headers = ['Mã Phiếu Phạt', 'Tên Thành Viên', 'Số Tiền Phạt (VNĐ)', 'Lý Do Vi Phạm', 'Trạng Thái Thu', 'Ngày Tạo'];
+    
+    // Row content
+    const rows = sortedData.map(f => [
+      f.fine_id,
+      f.user_name || `ID: ${f.user}`,
+      f.amount,
+      f.reason,
+      f.is_paid ? 'Đã thu' : 'Chưa thu',
+      f.created_at ? new Date(f.created_at).toLocaleString('vi-VN') : '—'
+    ]);
+    
+    // Create CSV content with commas
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(r => r.map(val => `"${String(val).replace(/"/g, '""')}"`).join(','))
+    ].join('\n');
+    
+    // Add UTF-8 BOM to prevent Excel display issues with Vietnamese text
+    const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `Báo_cáo_phạt_vi_phạm_${new Date().toLocaleDateString('vi-VN').replace(/\//g, '-')}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   const SortIcon = ({ columnKey }) => {
     if (sortConfig.key !== columnKey) return <span style={{ opacity: 0.3, marginLeft: '4px', fontSize: '0.8rem' }}>↕</span>;
     return sortConfig.direction === 'asc' ? <span style={{ marginLeft: '4px', color: 'var(--accent)', fontSize: '0.8rem' }}>↑</span> : <span style={{ marginLeft: '4px', color: 'var(--accent)', fontSize: '0.8rem' }}>↓</span>;
@@ -1385,6 +1418,45 @@ const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
   }, [sortedData, currentPage]);
 
   const stats = useMemo(() => {
+    if (activeTab === 'fines') {
+      const totalCount = data.length;
+      const totalPaid = Array.isArray(data) ? data.filter(f => f.is_paid).reduce((acc, curr) => acc + (parseFloat(curr.amount) || 0), 0) : 0;
+      const totalUnpaid = Array.isArray(data) ? data.filter(f => !f.is_paid).reduce((acc, curr) => acc + (parseFloat(curr.amount) || 0), 0) : 0;
+      const unpaidCount = Array.isArray(data) ? data.filter(f => !f.is_paid).length : 0;
+      return [
+         { title: 'Tổng phiếu phạt', value: totalCount, detail: 'Tổng số vụ vi phạm', icon: AlertCircle, color: '#6366f1' },
+         { title: 'Đã thu (VNĐ)', value: `${totalPaid.toLocaleString('vi-VN')} đ`, detail: 'Hoàn thành nộp phạt', icon: Book, color: '#10b981' },
+         { title: 'Chưa thu (VNĐ)', value: `${totalUnpaid.toLocaleString('vi-VN')} đ`, detail: 'Chờ thanh toán', icon: AlertCircle, color: '#ef4444' },
+         { title: 'Số vụ chưa nộp', value: unpaidCount, detail: 'Cần đôn đốc xử lý', icon: Tag, color: '#f59e0b' }
+      ];
+    }
+
+    if (activeTab === 'members') {
+      const totalCount = data.length;
+      const activeCount = Array.isArray(data) ? data.filter(m => m.is_active).length : 0;
+      const lockedCount = Array.isArray(data) ? data.filter(m => !m.is_active).length : 0;
+      const adminsCount = Array.isArray(data) ? data.filter(m => m.role === 'Admin' || m.role === 'Librarian').length : 0;
+      return [
+         { title: 'Tổng thành viên', value: totalCount, detail: 'Tài khoản hệ thống', icon: BookOpen, color: '#6366f1' },
+         { title: 'Đang hoạt động', value: activeCount, detail: 'Sẵn sàng mượn sách', icon: Book, color: '#10b981' },
+         { title: 'Bị khóa', value: lockedCount, detail: 'Tài khoản tạm ngưng', icon: AlertCircle, color: '#ef4444' },
+         { title: 'Quản trị viên', value: adminsCount, detail: 'Admin & Thủ thư', icon: Tag, color: '#f59e0b' }
+      ];
+    }
+
+    if (activeTab === 'borrow') {
+      const totalCount = data.length;
+      const activeCount = Array.isArray(data) ? data.filter(t => t.status === 'Active' || t.status === 'Đang mượn').length : 0;
+      const overdueCount = Array.isArray(data) ? data.filter(t => t.status === 'Overdue' || t.status === 'Quá hạn').length : 0;
+      const pendingCount = Array.isArray(data) ? data.filter(t => t.status === 'Pending' || t.status === 'Chờ duyệt').length : 0;
+      return [
+         { title: 'Tổng lượt mượn', value: totalCount, detail: 'Lịch sử giao dịch', icon: BookOpen, color: '#6366f1' },
+         { title: 'Đang mượn', value: activeCount, detail: 'Sách đang lưu hành', icon: Book, color: '#10b981' },
+         { title: 'Quá hạn', value: overdueCount, detail: 'Cần đôn đốc trả sách', icon: AlertCircle, color: '#ef4444' },
+         { title: 'Chờ duyệt', value: pendingCount, detail: 'Yêu cầu mới', icon: Tag, color: '#f59e0b' }
+      ];
+    }
+
     const total = booksRaw.length;
     const inventory = Array.isArray(booksRaw) ? booksRaw.reduce((acc, curr) => acc + (parseInt(curr.stock) || 0), 0) : 0;
     const critical = Array.isArray(booksRaw) ? booksRaw.filter(b => (parseInt(b.stock) || 0) < 5).length : 0;
@@ -1395,7 +1467,7 @@ const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
        { title: 'Sách tồn thấp', value: critical, detail: 'Cần nhập thêm sách', icon: AlertCircle, color: '#ef4444' },
        { title: 'Số lượng thể loại', value: categoriesCount, detail: 'Danh mục đa dạng', icon: Tag, color: '#f59e0b' }
     ];
-  }, [booksRaw]);
+  }, [booksRaw, data, activeTab]);
 
   const handleAction = async (action, item) => {
     const idField = activeTab === 'books' || activeTab === 'dashboard' ? 'book_id' : 
@@ -1705,6 +1777,11 @@ const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
              </div>
 
              <div style={{ display: 'flex', gap: '0.75rem', position: 'relative' }}>
+                {activeTab === 'fines' && (
+                  <button className="btn" onClick={handleExportFines} style={{ padding: '0.6rem 1.2rem', borderRadius: '12px', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.4rem', border: '1px solid var(--card-border)', background: 'var(--card-bg)', color: 'var(--text-primary)', cursor: 'pointer', transition: 'all 0.2s' }}>
+                    <Download size={16} /> Xuất báo cáo
+                  </button>
+                )}
                 <button className="btn btn-primary" onClick={() => {
                    navigate(`/admin/${activeTab}/add`);
                 }}>
@@ -1730,7 +1807,7 @@ const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
                      ) : activeTab === 'reviews' ? (
                         <><th onClick={() => handleSort('rating')} style={{cursor:'pointer', whiteSpace: 'nowrap'}}>Đánh giá (Sao) <SortIcon columnKey="rating"/></th><th onClick={() => handleSort('book')} style={{cursor:'pointer', whiteSpace: 'nowrap'}}>Mã Sách <SortIcon columnKey="book"/></th><th onClick={() => handleSort('user')} style={{cursor:'pointer', whiteSpace: 'nowrap'}}>Mã Người dùng <SortIcon columnKey="user"/></th><th>Nội dung</th><th>Hành động</th></>
                      ) : activeTab === 'fines' ? (
-                         <><th onClick={() => handleSort('amount')} style={{cursor:'pointer', whiteSpace: 'nowrap'}}>Khoản phạt <SortIcon columnKey="amount"/></th><th>Lý do vi phạm</th><th>Trạng thái thu</th><th>Hành động</th></>
+                         <><th onClick={() => handleSort('user_name')} style={{cursor:'pointer', whiteSpace: 'nowrap'}}>Thành viên <SortIcon columnKey="user_name"/></th><th onClick={() => handleSort('amount')} style={{cursor:'pointer', whiteSpace: 'nowrap'}}>Khoản phạt <SortIcon columnKey="amount"/></th><th>Lý do vi phạm</th><th>Trạng thái thu</th><th>Hành động</th></>
                      ) : (
                          <><th>ID</th><th onClick={() => handleSort('name')} style={{cursor:'pointer', whiteSpace: 'nowrap'}}>Tên danh mục <SortIcon columnKey="name"/></th><th>Phân loại</th><th>Hành động</th></>
                      )}
@@ -1781,7 +1858,18 @@ const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
                                 <td>{(item.details && item.details.length > 0) ? item.details.map(d => d.book_title).join(', ') : 'Trống'}</td>
                                 <td>{item.borrow_date}</td>
                                 <td>{item.details && item.details.length > 0 ? item.details[0].due_date : '-'}</td>
-                                <td><span className={`badge ${item.status === 'Đang mượn' ? 'badge-warning' : 'badge-success'}`}>{item.status}</span></td>
+                                <td>
+                                  <span className={`badge ${
+                                    item.status === 'Active' || item.status === 'active' || item.status === 'Đang mượn' ? 'badge-primary' :
+                                    item.status === 'Pending' || item.status === 'pending' || item.status === 'Chờ duyệt' ? 'badge-warning' :
+                                    item.status === 'Returned' || item.status === 'returned' || item.status === 'Đã trả sách' || item.status === 'Completed' || item.status === 'completed' || item.status === 'Hoàn thành' ? 'badge-success' :
+                                    item.status === 'Overdue' || item.status === 'overdue' || item.status === 'Quá hạn' || item.status === 'Rejected' || item.status === 'rejected' || item.status === 'Từ chối' ? 'badge-danger' :
+                                    'badge-neutral'
+                                  }`}>
+                                    {STATUS_INFO[item.status]?.text || item.status}
+                                  </span>
+                                </td>
+
                                </>
                             ) : activeTab === 'reviews' ? (
                                 <>
@@ -1792,8 +1880,29 @@ const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
                                 </>
                             ) : activeTab === 'fines' ? (
                                 <>
+                                 <td>
+                                    <div style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-primary)' }}>
+                                       <User size={14} style={{ color: 'var(--accent)' }} />
+                                       {item.user_name || `ID: ${item.user}`}
+                                    </div>
+                                 </td>
                                  <td><div style={{ fontWeight: 800, color: 'var(--c-danger)' }}>{Number(item.amount).toLocaleString('vi-VN')} đ</div></td>
-                                 <td><div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{item.reason}</div></td>
+                                 <td>
+                                    <div style={{ fontSize: '0.85rem', color: 'var(--text-primary)', fontWeight: 700 }}>{item.reason}</div>
+                                    {item.ticket_books && item.ticket_books.length > 0 && (
+                                      <div style={{ marginTop: '0.35rem', display: 'flex', flexDirection: 'column', gap: '0.2rem', paddingLeft: '0.2rem' }}>
+                                        {item.ticket_books.map((b, idx) => (
+                                          <div key={idx} style={{ fontSize: '0.75rem', color: 'var(--accent)', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                                            <span>📖</span>
+                                            <span style={{ fontWeight: 600 }}>{b.title}</span>
+                                            <span style={{ color: b.is_returned ? 'var(--c-success)' : 'var(--c-danger)', fontSize: '0.7rem' }}>
+                                              {b.is_returned ? '(Đã trả)' : '(Chưa trả)'}
+                                            </span>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    )}
+                                 </td>
                                  <td><span className={`badge ${item.is_paid ? 'badge-success' : 'badge-danger'}`}>{item.is_paid ? '● Đã thu' : '● Chưa thu'}</span></td>
                                 </>
                             ) : (

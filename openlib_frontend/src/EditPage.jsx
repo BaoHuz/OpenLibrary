@@ -208,22 +208,28 @@ const EditPage = () => {
       { key: 'comment', label: 'Nội dung nhận xét', type: 'textarea' },
     ],
     fines: [
+      { key: 'user', label: 'Mã thành viên (Người bị phạt)', type: 'readonly' },
       { key: 'amount', label: 'Số tiền phạt (VNĐ)', type: 'number' },
       { key: 'reason', label: 'Lý do phạt', type: 'text' },
-      { key: 'is_paid', label: 'Đã nộp phạt (true/false)', type: 'text' },
+      { key: 'is_paid', label: 'Trạng thái nộp phạt', type: 'select', options: [
+        { value: false, label: 'Chưa thu' },
+        { value: true, label: 'Đã thu' }
+      ] },
+      { key: 'ticket', label: 'Mã Phiếu mượn', type: 'readonly' }
     ],
     borrow_tickets: [
       { key: 'member', label: 'Mã thành viên (Người mượn)', type: 'readonly' },
       { key: 'librarian', label: 'Mã thủ thư (Người duyệt)', type: 'readonly' },
       { key: 'borrow_date', label: 'Ngày mượn', type: 'readonly' },
       { key: 'status', label: 'Trạng thái', type: 'select', options: [
-        { value: 'Pending', label: 'Chờ duyệt (Pending)' },
-        { value: 'Active', label: 'Đang mượn (Active)' },
-        { value: 'Returned', label: 'Đã trả sách (Returned)' },
-        { value: 'Overdue', label: 'Quá hạn (Overdue)' },
-        { value: 'Rejected', label: 'Từ chối (Rejected)' }
+        { value: 'Pending', label: 'Chờ duyệt' },
+        { value: 'Active', label: 'Đang mượn' },
+        { value: 'Returned', label: 'Đã trả sách' },
+        { value: 'Overdue', label: 'Quá hạn' },
+        { value: 'Rejected', label: 'Từ chối' }
       ] },
     ],
+
   };
 
   const fields = fieldConfig[type] || fieldConfig[endpoint] || 
@@ -397,7 +403,24 @@ const EditPage = () => {
           <div className="icon-badge"><Edit3 size={24} /></div>
           <div>
             <h2 style={{ margin: 0 }}>Chỉnh sửa thông tin</h2>
-            <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '0.2rem' }}>ID: {id} · {endpoint}</div>
+            <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '0.2rem' }}>
+              {(() => {
+                const translations = {
+                  'books': 'Sách',
+                  'authors': 'Tác giả',
+                  'categories': 'Thể loại',
+                  'members': 'Thành viên',
+                  'users': 'Thành viên',
+                  'borrow': 'Phiếu mượn',
+                  'borrow_tickets': 'Phiếu mượn',
+                  'publishers': 'Nhà xuất bản',
+                  'fines': 'Phiếu phạt',
+                  'reviews': 'Đánh giá'
+                };
+                const vnName = translations[type] || translations[endpoint] || endpoint;
+                return `ID: ${id} · ${vnName}`;
+              })()}
+            </div>
           </div>
         </div>
         <button className="btn btn-danger" onClick={handleDelete}><Trash2 size={18}/> Xóa</button>

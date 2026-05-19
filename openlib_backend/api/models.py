@@ -127,6 +127,7 @@ class Reviews(models.Model):
 class Fines(models.Model):
     fine_id = models.AutoField(primary_key=True)
     user = models.ForeignKey(Users, models.DO_NOTHING, blank=True, null=True)
+    ticket = models.ForeignKey('BorrowTickets', models.SET_NULL, blank=True, null=True, related_name='fines')
     amount = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True)
     reason = models.CharField(max_length=255, blank=True, null=True)
     is_paid = models.BooleanField(default=False, blank=True, null=True)

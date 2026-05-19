@@ -25,9 +25,22 @@ class ReviewSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 class FineSerializer(serializers.ModelSerializer):
+    user_name = serializers.ReadOnlyField(source='user.full_name')
+    ticket_books = serializers.SerializerMethodField()
+
     class Meta:
         model = Fines
         fields = '__all__'
+
+    def get_ticket_books(self, obj):
+        if obj.ticket:
+            return [{
+                'book_id': detail.book.book_id,
+                'title': detail.book.title,
+                'due_date': detail.due_date,
+                'is_returned': detail.is_returned,
+            } for detail in obj.ticket.borrowticketdetails_set.all()]
+        return []
 
 class UserSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, required=False)

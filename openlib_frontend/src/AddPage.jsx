@@ -14,7 +14,7 @@ const AddPage = () => {
   const [saving, setSaving] = useState(false);
   const [formData, setFormData] = useState({});
   const [errors, setErrors] = useState({});
-  const [extraData, setExtraData] = useState({ authors: [], categories: [], publishers: [] });
+  const [extraData, setExtraData] = useState({ authors: [], categories: [], publishers: [], users: [], tickets: [] });
   
   // Custom styles for react-select
   const customSelectStyles = {
@@ -80,16 +80,34 @@ const AddPage = () => {
             axios.get('http://127.0.0.1:8000/api/categories/'),
             axios.get('http://127.0.0.1:8000/api/publishers/')
           ]);
-          setExtraData({
+          setExtraData(prev => ({
+            ...prev,
             authors: Array.isArray(aRes.data) ? aRes.data : [],
             categories: Array.isArray(cRes.data) ? cRes.data : [],
             publishers: Array.isArray(pRes.data) ? pRes.data : []
-          });
+          }));
         } catch (err) {
           console.error('Error fetching dropdown data:', err);
         }
       };
       fetchExtraData();
+    } else if (type === 'fines') {
+      const fetchFinesExtra = async () => {
+        try {
+          const [uRes, tRes] = await Promise.all([
+            axios.get('http://127.0.0.1:8000/api/users/'),
+            axios.get('http://127.0.0.1:8000/api/borrow_tickets/')
+          ]);
+          setExtraData(prev => ({
+            ...prev,
+            users: Array.isArray(uRes.data) ? uRes.data : [],
+            tickets: Array.isArray(tRes.data) ? tRes.data : []
+          }));
+        } catch (err) {
+          console.error('Error fetching fines dropdown data:', err);
+        }
+      };
+      fetchFinesExtra();
     }
   }, [type]);
 
@@ -142,6 +160,19 @@ const AddPage = () => {
       { key: 'name', label: 'Tên nhà xuất bản', type: 'text', placeholder: 'Ví dụ: NXB Trẻ', full: true },
       { key: 'contact_email', label: 'Email liên hệ', type: 'email', placeholder: 'contact@nxb.com' },
       { key: 'address', label: 'Địa chỉ', type: 'text', placeholder: 'Địa chỉ trụ sở...', full: true }
+    ],
+    'fines': [
+      { key: 'user', label: 'Thành viên bị phạt', type: 'select', options: (extraData.users || []).map(u => ({ value: u.user_id, label: `${u.full_name} (@${u.username})` })) },
+      { key: 'amount', label: 'Số tiền phạt (VNĐ)', type: 'number', placeholder: 'Ví dụ: 50000' },
+      { key: 'is_paid', label: 'Trạng thái nộp phạt', type: 'select', options: [
+        { value: false, label: 'Chưa thu' },
+        { value: true, label: 'Đã thu' }
+      ]},
+      { key: 'ticket', label: 'Phiếu mượn liên quan (sách mượn)', type: 'select', options: (extraData.tickets || []).map(t => ({ 
+        value: t.ticket_id, 
+        label: `#${t.ticket_id} - ${t.member_name || 'N/A'} → ${t.details && t.details.length > 0 ? t.details.map(d => d.book_title).join(', ') : 'Không có sách'}`
+      })) },
+      { key: 'reason', label: 'Lý do vi phạm', type: 'text', placeholder: 'Ví dụ: Làm hỏng sách, trả trễ hạn...', full: true }
     ]
   };
 
@@ -274,6 +305,7 @@ const AddPage = () => {
             options={field.options}
             value={field.options && field.options.find(opt => opt.value === formData[field.key]) || null}
             onChange={(selected) => handleChange(selected ? selected.value : null)}
+            isClearable
           />
         ) : field.type === 'isbn' ? (
           <div style={{ display: 'flex', gap: '0.5rem' }}>
@@ -323,8 +355,24 @@ const AddPage = () => {
       case 'members': return <User size={24} />;
       case 'categories': return <Tag size={24} />;
       case 'publishers': return <Building2 size={24} />;
+      case 'fines': return <AlertCircle size={24} />;
       default: return <PlusCircle size={24} />;
     }
+  };
+
+  const getTitle = () => {
+    const translations = {
+      'books': 'Sách',
+      'authors': 'Tác giả',
+      'categories': 'Thể loại',
+      'members': 'Thành viên',
+      'borrow': 'Lượt mượn',
+      'publishers': 'Nhà xuất bản',
+      'fines': 'Phiếu phạt',
+      'reviews': 'Đánh giá'
+    };
+    const vnName = translations[type] || type;
+    return `Thêm ${vnName} mới`;
   };
 
   return (
@@ -333,7 +381,7 @@ const AddPage = () => {
         <button className="icon-btn" onClick={() => navigate(-1)}><ArrowLeft size={20}/></button>
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
           <div className="icon-badge">{getIcon()}</div>
-          <h2>{type === 'books' ? 'Thêm Sách mới' : `Thêm ${type} mới`}</h2>
+          <h2>{getTitle()}</h2>
         </div>
       </div>
 
@@ -347,6 +395,44 @@ const AddPage = () => {
              <p>Cấu hình cho mục này chưa khả dụng.</p>
           </div>
         )}
+
+        {type === 'fines' && formData.ticket && (() => {
+          const selectedTicket = (extraData.tickets || []).find(t => t.ticket_id === formData.ticket);
+          const books = selectedTicket && selectedTicket.details ? selectedTicket.details : [];
+          if (books.length === 0) return null;
+          return (
+            <div style={{ marginTop: '1.5rem', background: 'var(--input-bg)', padding: '2rem', borderRadius: '1.5rem' }}>
+              <h3 style={{ fontSize: '1.1rem', fontWeight: 800, marginBottom: '1.5rem', color: 'var(--accent)', borderBottom: '2px solid var(--table-border)', paddingBottom: '0.5rem' }}>📚 CHI TIẾT SÁCH QUÁ HẠN TRONG PHIẾU</h3>
+              <div style={{ background: 'var(--card-bg)', borderRadius: '1rem', padding: '1rem', border: '1px solid var(--table-border)', overflowX: 'auto' }}>
+                <table className="lms-table" style={{ margin: 0 }}>
+                  <thead>
+                    <tr>
+                      <th style={{ padding: '10px 16px' }}>Tên sách</th>
+                      <th style={{ padding: '10px 16px' }}>Mã sách</th>
+                      <th style={{ padding: '10px 16px' }}>Hạn trả dự kiến</th>
+                      <th style={{ padding: '10px 16px' }}>Tình trạng</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {books.map((book, idx) => (
+                      <tr key={idx}>
+                        <td style={{ fontWeight: 700, padding: '10px 16px' }}>{book.book_title}</td>
+                        <td style={{ fontFamily: 'monospace', padding: '10px 16px' }}>ID: {book.book}</td>
+                        <td style={{ padding: '10px 16px' }}>{book.due_date ? new Date(book.due_date).toLocaleDateString('vi-VN') : '—'}</td>
+                        <td style={{ padding: '10px 16px' }}>
+                          <span className={`badge ${book.is_returned ? 'badge-success' : 'badge-danger'}`} style={{ whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center' }}>
+                            {book.is_returned ? '● Đã trả' : '● Chưa trả (Quá hạn)'}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          );
+        })()}
+
       </div>
 
       <div className="form-footer">

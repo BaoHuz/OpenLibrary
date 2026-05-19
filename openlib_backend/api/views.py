@@ -84,8 +84,14 @@ class ReviewListAPIView(generics.ListCreateAPIView):
     serializer_class = ReviewSerializer
 
 class FineListAPIView(generics.ListCreateAPIView):
-    queryset = Fines.objects.all()
     serializer_class = FineSerializer
+
+    def get_queryset(self):
+        queryset = Fines.objects.all().order_by('-created_at')
+        username = self.request.query_params.get('username')
+        if username:
+            queryset = queryset.filter(user__username=username)
+        return queryset
 
 # ─── AUTH ────────────────────────────────────────────────────
 class LoginAPIView(APIView):
@@ -205,15 +211,50 @@ def _auto_update_overdue_tickets():
     from datetime import date
     try:
         today = date.today()
-        # Lấy tất cả các phiếu đang Active có ít nhất một cuốn sách quá hạn chưa trả
+        # Lấy tất cả các phiếu có ít nhất một cuốn sách quá hạn chưa trả
         overdue_tickets = BorrowTickets.objects.filter(
-            status='Active',
             borrowticketdetails__is_returned=False,
             borrowticketdetails__due_date__lt=today
         ).distinct()
+        
+        from .models import Fines
+        
         for ticket in overdue_tickets:
-            ticket.status = 'Overdue'
-            ticket.save()
+            if ticket.status != 'Overdue':
+                ticket.status = 'Overdue'
+                ticket.save()
+            
+            # Tính toán số ngày trễ (lấy sách trễ lâu nhất của phiếu này)
+            details = ticket.borrowticketdetails_set.filter(is_returned=False, due_date__lt=today)
+            if details.exists():
+                earliest_due = min(d.due_date for d in details)
+                overdue_days = (today - earliest_due).days
+                
+                reason_prefix = f"(Phiếu #{ticket.ticket_id})"
+                reason_text = f"Trễ hạn trả sách {overdue_days} ngày {reason_prefix}"
+                fine_amount = max(10000.00, min(200000.00, overdue_days * 5000.00))  # Số ngày trễ x 5.000đ (tối thiểu 10k, tối đa 200k)
+                
+                # Tìm bản ghi phạt của phiếu này bằng ticket FK hoặc qua text prefix
+                existing_fine = Fines.objects.filter(user=ticket.member, ticket=ticket).first()
+                if not existing_fine:
+                    existing_fine = Fines.objects.filter(user=ticket.member, reason__contains=reason_prefix).first()
+                
+                if existing_fine:
+                    if not existing_fine.is_paid:
+                        # Tự động cập nhật số ngày trễ và số tiền tăng lên, đồng thời gắn FK ticket
+                        existing_fine.reason = reason_text
+                        existing_fine.amount = fine_amount
+                        existing_fine.ticket = ticket
+                        existing_fine.save()
+                else:
+                    # Tạo mới bản ghi phạt liên kết trực tiếp với phiếu mượn
+                    Fines.objects.create(
+                        user=ticket.member,
+                        ticket=ticket,
+                        amount=fine_amount,
+                        reason=reason_text,
+                        is_paid=False
+                    )
     except Exception:
         pass
 

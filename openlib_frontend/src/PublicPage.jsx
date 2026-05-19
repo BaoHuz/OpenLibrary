@@ -138,6 +138,7 @@ const PublicPage = ({ user, onLogout }) => {
   });
   const [borrowHistory, setBorrowHistory] = useState([]);
   const [fines, setFines] = useState([]);
+  const [selectedTicket, setSelectedTicket] = useState(null);
   const [catPage, setCatPage] = useState(1);
   const [authorPage, setAuthorPage] = useState(1);
   const [selectedBook, setSelectedBook] = useState(null);
@@ -245,9 +246,12 @@ const PublicPage = ({ user, onLogout }) => {
           } catch (histErr) {
             console.error('Lỗi tải lịch sử mượn:', histErr);
           }
-          setFines([
-            { id: 'F1', book: 'Deep Work', amount: 35000, reason: 'Quá hạn 7 ngày', status: 'unpaid', date: '2026-01-27' },
-          ]);
+          try {
+            const finesRes = await axios.get(`${API}/fines/?username=${user.username}`);
+            setFines(finesRes.data || []);
+          } catch (finesErr) {
+            console.error('Lỗi tải khoản phạt:', finesErr);
+          }
         }
       } catch (e) {
         console.error('Fetch error:', e);
@@ -290,6 +294,20 @@ const PublicPage = ({ user, onLogout }) => {
       fetchBorrowHistory();
     } catch (e) {
       alert('Lỗi kết nối máy chủ!');
+    }
+  };
+
+  const handlePayFine = async (fineId, amount) => {
+    if (window.confirm(`Xác nhận thanh toán số tiền phạt ${Number(amount).toLocaleString('vi-VN')} đ cho khoản phạt này?`)) {
+      try {
+        await axios.patch(`${API}/fines/${fineId}/`, { is_paid: true });
+        alert('✅ Thanh toán thành công! Cảm ơn bạn đã thực hiện nghĩa vụ.');
+        const finesRes = await axios.get(`${API}/fines/?username=${user.username}`);
+        setFines(finesRes.data || []);
+      } catch (err) {
+        console.error('Lỗi thanh toán khoản phạt:', err);
+        alert('❌ Có lỗi xảy ra trong quá trình thanh toán.');
+      }
     }
   };
 
@@ -1162,30 +1180,71 @@ const PublicPage = ({ user, onLogout }) => {
                         <thead>
                           <tr>
                             <th style={{ textAlign: 'left', padding: '1rem', borderBottom: `2px solid ${border}`, fontSize: '0.8rem', color: textMut, textTransform: 'uppercase' }}>Mã phiếu</th>
-                            <th style={{ textAlign: 'left', padding: '1rem', borderBottom: `2px solid ${border}`, fontSize: '0.8rem', color: textMut, textTransform: 'uppercase' }}>Danh sách sách</th>
-                            <th style={{ textAlign: 'left', padding: '1rem', borderBottom: `2px solid ${border}`, fontSize: '0.8rem', color: textMut, textTransform: 'uppercase' }}>Ngày mượn / Yêu cầu</th>
-                            <th style={{ textAlign: 'left', padding: '1rem', borderBottom: `2px solid ${border}`, fontSize: '0.8rem', color: textMut, textTransform: 'uppercase' }}>Hạn trả dự kiến</th>
-                            <th style={{ textAlign: 'left', padding: '1rem', borderBottom: `2px solid ${border}`, fontSize: '0.8rem', color: textMut, textTransform: 'uppercase' }}>Trạng thái</th>
+                            <th style={{ textAlign: 'left', padding: '1rem', borderBottom: `2px solid ${border}`, fontSize: '0.8rem', color: textMut, textTransform: 'uppercase' }}>Danh sách sách & Trạng thái</th>
+                            <th style={{ textAlign: 'left', padding: '1rem', borderBottom: `2px solid ${border}`, fontSize: '0.8rem', color: textMut, textTransform: 'uppercase' }}>Ngày mượn</th>
+                            <th style={{ textAlign: 'left', padding: '1rem', borderBottom: `2px solid ${border}`, fontSize: '0.8rem', color: textMut, textTransform: 'uppercase' }}>Thời hạn trả / Ngày trả thực tế</th>
+                            <th style={{ textAlign: 'left', padding: '1rem', borderBottom: `2px solid ${border}`, fontSize: '0.8rem', color: textMut, textTransform: 'uppercase' }}>Trạng thái phiếu</th>
                             <th style={{ textAlign: 'center', padding: '1rem', borderBottom: `2px solid ${border}`, fontSize: '0.8rem', color: textMut, textTransform: 'uppercase' }}>Thao tác</th>
                           </tr>
                         </thead>
                         <tbody>
                           {borrowHistory.map(h => {
-                            const itemsList = h.books || h.details;
-                            const bookTitles = itemsList && itemsList.length > 0 ? itemsList.map(d => d.title || d.book_title || '—').join(', ') : 'Chưa rõ';
-                            const firstDueDate = itemsList && itemsList[0] ? (itemsList[0].due_date || '-') : '-';
+                            const itemsList = h.books || h.details || [];
                             const isPending = h.status?.toLowerCase() === 'pending';
                             const isApproved = h.status?.toLowerCase() === 'active' || h.status?.toLowerCase() === 'approved';
                             const isReturned = h.status?.toLowerCase() === 'returned' || h.status?.toLowerCase() === 'completed';
                             const isRejected = h.status?.toLowerCase() === 'rejected';
                             const isOverdue = h.status?.toLowerCase() === 'overdue';
 
+                            const borrowDate = h.borrow_date ? new Date(h.borrow_date).toLocaleDateString('vi-VN') : '—';
+
                             return (
-                              <tr key={h.ticket_id}>
+                              <tr key={h.ticket_id} className="hover-row" style={{ transition: 'background-color 0.2s' }}>
                                 <td style={{ padding: '1.2rem 1rem', borderBottom: `1px solid ${border}`, fontWeight: 800, color: accent }}>#{h.ticket_id}</td>
-                                <td style={{ padding: '1.2rem 1rem', borderBottom: `1px solid ${border}`, fontWeight: 700, maxWidth: '240px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={bookTitles}>{bookTitles}</td>
-                                <td style={{ padding: '1.2rem 1rem', borderBottom: `1px solid ${border}`, color: textSec }}>{h.borrow_date}</td>
-                                <td style={{ padding: '1.2rem 1rem', borderBottom: `1px solid ${border}`, color: textSec }}>{firstDueDate}</td>
+                                <td style={{ padding: '1.2rem 1rem', borderBottom: `1px solid ${border}` }}>
+                                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                    {itemsList.map((d, idx) => (
+                                      <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                                        <span style={{ fontWeight: 700, color: textPrim, fontSize: '0.9rem' }}>📖 {d.title || d.book_title || '—'}</span>
+                                        {(isApproved || isReturned || isOverdue) && (
+                                          <span style={{ 
+                                            padding: '0.15rem 0.5rem', 
+                                            borderRadius: '50px', 
+                                            fontSize: '0.7rem', 
+                                            fontWeight: 800,
+                                            background: (d.is_returned || isReturned) ? '#d1fae5' : '#fee2e2',
+                                            color: (d.is_returned || isReturned) ? '#059669' : '#ef4444'
+                                          }}>
+                                            {(d.is_returned || isReturned) ? 'Đã trả' : 'Chưa trả'}
+                                          </span>
+                                        )}
+                                      </div>
+                                    ))}
+                                  </div>
+                                </td>
+                                <td style={{ padding: '1.2rem 1rem', borderBottom: `1px solid ${border}`, color: textSec, fontWeight: 600 }}>{borrowDate}</td>
+                                <td style={{ padding: '1.2rem 1rem', borderBottom: `1px solid ${border}`, color: textSec }}>
+                                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', fontSize: '0.85rem' }}>
+                                    {itemsList.map((d, idx) => {
+                                      const dueDate = d.due_date ? new Date(d.due_date).toLocaleDateString('vi-VN') : '—';
+                                      const returnDate = d.return_date ? new Date(d.return_date).toLocaleDateString('vi-VN') : null;
+                                      return (
+                                        <div key={idx} style={{ color: textSec, fontWeight: 500 }}>
+                                          Hạn trả: <span style={{ fontWeight: 700, color: textPrim }}>{dueDate}</span>
+                                          {isReturned ? (
+                                            <span style={{ color: '#059669', marginLeft: '0.4rem', fontWeight: 700 }}>
+                                              (Đã trả{returnDate ? `: ${returnDate}` : ''})
+                                            </span>
+                                          ) : returnDate ? (
+                                            <span style={{ color: '#059669', marginLeft: '0.4rem', fontWeight: 700 }}>
+                                              (Trả: {returnDate})
+                                            </span>
+                                          ) : null}
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                </td>
                                 <td style={{ padding: '1.2rem 1rem', borderBottom: `1px solid ${border}` }}>
                                   <span style={{ 
                                     padding: '0.35rem 0.8rem', 
@@ -1199,17 +1258,26 @@ const PublicPage = ({ user, onLogout }) => {
                                   </span>
                                 </td>
                                 <td style={{ padding: '1.2rem 1rem', borderBottom: `1px solid ${border}`, textAlign: 'center' }}>
-                                  {isPending ? (
-                                    <button 
-                                      onClick={() => handleCancelRequest(h.ticket_id)}
-                                      style={{ background: '#fef2f2', color: '#ef4444', border: '1px solid #fee2e2', padding: '0.4rem 0.9rem', borderRadius: '8px', fontSize: '0.8rem', fontWeight: 800, cursor: 'pointer', transition: 'all .2s' }}
-                                      onMouseEnter={e => { e.currentTarget.style.background = '#ef4444'; e.currentTarget.style.color = '#fff'; }}
-                                      onMouseLeave={e => { e.currentTarget.style.background = '#fef2f2'; e.currentTarget.style.color = '#ef4444'; }}>
-                                      Hủy yêu cầu
-                                    </button>
-                                  ) : (
-                                    <span style={{ color: textMut, fontSize: '0.85rem' }}>-</span>
-                                  )}
+                                  <div style={{ display: 'flex', justifyContent: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                                    {isPending && (
+                                      <button 
+                                        onClick={() => handleCancelRequest(h.ticket_id)}
+                                        style={{ background: '#fef2f2', color: '#ef4444', border: '1px solid #fee2e2', padding: '0.5rem 1rem', borderRadius: '10px', fontSize: '0.8rem', fontWeight: 800, cursor: 'pointer', transition: 'all .2s' }}
+                                        onMouseEnter={e => { e.currentTarget.style.background = '#ef4444'; e.currentTarget.style.color = '#fff'; }}
+                                        onMouseLeave={e => { e.currentTarget.style.background = '#fef2f2'; e.currentTarget.style.color = '#ef4444'; }}>
+                                        Hủy yêu cầu
+                                      </button>
+                                    )}
+                                    {!isPending && (
+                                      <button 
+                                        onClick={() => setSelectedTicket(h)}
+                                        style={{ background: '#f1f5f9', color: '#475569', border: '1px solid #e2e8f0', padding: '0.5rem 1rem', borderRadius: '10px', fontSize: '0.8rem', fontWeight: 800, cursor: 'pointer', transition: 'all .2s' }}
+                                        onMouseEnter={e => { e.currentTarget.style.background = '#e2e8f0'; }}
+                                        onMouseLeave={e => { e.currentTarget.style.background = '#f1f5f9'; }}>
+                                        Xem chi tiết
+                                      </button>
+                                    )}
+                                  </div>
                                 </td>
                               </tr>
                             );
@@ -1230,18 +1298,40 @@ const PublicPage = ({ user, onLogout }) => {
                     <div style={{ textAlign: 'center', padding: '3rem', color: textMut }}>Tuyệt vời! Bạn không có khoản phạt nào.</div>
                   ) : (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                      {fines.map(f => (
-                        <div key={f.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1.5rem', borderRadius: '1.25rem', border: `1px solid #fee2e2`, background: '#fef2f2' }}>
-                          <div>
-                            <div style={{ fontWeight: 800, color: '#b91c1c' }}>{f.book}</div>
-                            <div style={{ fontSize: '0.85rem', color: '#7f1d1d' }}>{f.reason} • {f.date}</div>
+                      {fines.map(f => {
+                        const bookTitles = f.ticket_books && f.ticket_books.length > 0
+                          ? f.ticket_books.map(tb => tb.title).join(', ')
+                          : 'Phạt vi phạm khác';
+                        const fineDate = f.created_at ? new Date(f.created_at).toLocaleDateString('vi-VN') : '—';
+                        return (
+                          <div key={f.fine_id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1.5rem', borderRadius: '1.25rem', border: `1px solid ${f.is_paid ? '#d1fae5' : '#fee2e2'}`, background: f.is_paid ? '#f0fdf4' : '#fef2f2' }}>
+                            <div>
+                              <div style={{ fontWeight: 800, color: f.is_paid ? '#065f46' : '#b91c1c' }}>
+                                📚 {bookTitles}
+                              </div>
+                              <div style={{ fontSize: '0.85rem', color: f.is_paid ? '#047857' : '#7f1d1d', marginTop: '0.25rem' }}>
+                                Lý do: {f.reason || 'Vi phạm nội quy'} • Ngày tạo: {fineDate}
+                              </div>
+                            </div>
+                            <div style={{ textAlign: 'right' }}>
+                              <div style={{ fontSize: '1.25rem', fontWeight: 900, color: f.is_paid ? '#10b981' : '#ef4444' }}>
+                                {Number(f.amount).toLocaleString('vi-VN')} đ
+                              </div>
+                              {f.is_paid ? (
+                                <span style={{ display: 'inline-block', marginTop: '0.5rem', background: '#10b981', color: '#fff', padding: '0.4rem 1rem', borderRadius: '50px', fontSize: '0.8rem', fontWeight: 700 }}>✓ Đã thanh toán</span>
+                              ) : (
+                                <button 
+                                  onClick={() => handlePayFine(f.fine_id, f.amount)}
+                                  style={{ marginTop: '0.5rem', background: '#ef4444', color: '#fff', border: 'none', padding: '0.4rem 1rem', borderRadius: '50px', fontSize: '0.8rem', fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s' }}
+                                  onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.05)'}
+                                  onMouseLeave={e => e.currentTarget.style.transform = ''}>
+                                  Thanh toán ngay
+                                </button>
+                              )}
+                            </div>
                           </div>
-                          <div style={{ textAlign: 'right' }}>
-                            <div style={{ fontSize: '1.25rem', fontWeight: 900, color: '#ef4444' }}>{f.amount.toLocaleString()}đ</div>
-                            <button style={{ marginTop: '0.5rem', background: '#ef4444', color: '#fff', border: 'none', padding: '0.4rem 1rem', borderRadius: '50px', fontSize: '0.8rem', fontWeight: 700, cursor: 'pointer' }}>Thanh toán ngay</button>
-                          </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   )}
                 </div>
@@ -1664,6 +1754,105 @@ const PublicPage = ({ user, onLogout }) => {
             </div>
           </div>
         </section>
+      )}
+
+      {/* ══════ TICKET DETAIL MODAL ══════ */}
+      {selectedTicket && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(15,23,42,0.6)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '1.5rem' }}>
+          <div style={{ background: surface, borderRadius: '2rem', width: '100%', maxWidth: '650px', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)', border: `1px solid ${border}`, overflow: 'hidden' }}>
+            
+            {/* Header */}
+            <div style={{ padding: '2rem 2.5rem 1.5rem', borderBottom: `1px solid ${border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'linear-gradient(135deg, #f8fafc, #f1f5f9)' }}>
+              <div>
+                <h3 style={{ fontSize: '1.5rem', fontWeight: 900, color: textPrim, display: 'flex', alignItems: 'center', gap: '0.5rem', margin: 0 }}>
+                  🎫 Chi tiết phiếu mượn #{selectedTicket.ticket_id}
+                </h3>
+                <span style={{ 
+                  display: 'inline-block',
+                  marginTop: '0.5rem',
+                  padding: '0.25rem 0.75rem', 
+                  borderRadius: '50px', 
+                  fontSize: '0.75rem', 
+                  fontWeight: 800, 
+                  background: selectedTicket.status?.toLowerCase() === 'pending' ? '#fef3c7' : selectedTicket.status?.toLowerCase() === 'active' || selectedTicket.status?.toLowerCase() === 'approved' ? '#dbeafe' : selectedTicket.status?.toLowerCase() === 'returned' || selectedTicket.status?.toLowerCase() === 'completed' ? '#d1fae5' : '#fee2e2',
+                  color: selectedTicket.status?.toLowerCase() === 'pending' ? '#d97706' : selectedTicket.status?.toLowerCase() === 'active' || selectedTicket.status?.toLowerCase() === 'approved' ? '#2563eb' : selectedTicket.status?.toLowerCase() === 'returned' || selectedTicket.status?.toLowerCase() === 'completed' ? '#059669' : '#ef4444'
+                }}>
+                  Trạng thái: {selectedTicket.status?.toLowerCase() === 'pending' ? 'Chờ duyệt' : selectedTicket.status?.toLowerCase() === 'active' || selectedTicket.status?.toLowerCase() === 'approved' ? 'Đang mượn' : selectedTicket.status?.toLowerCase() === 'returned' || selectedTicket.status?.toLowerCase() === 'completed' ? 'Đã trả' : 'Quá hạn'}
+                </span>
+              </div>
+              <button 
+                onClick={() => setSelectedTicket(null)} 
+                style={{ background: '#e2e8f0', border: 'none', width: '36px', height: '36px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.25rem', fontWeight: 'bold', color: textSec, cursor: 'pointer', transition: 'all 0.2s' }}
+                onMouseEnter={e => e.currentTarget.style.background = '#cbd5e1'}
+                onMouseLeave={e => e.currentTarget.style.background = '#e2e8f0'}>
+                ✕
+              </button>
+            </div>
+
+            {/* Content */}
+            <div style={{ padding: '2rem 2.5rem', maxHeight: '50vh', overflowY: 'auto' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginBottom: '2rem', padding: '1.25rem', borderRadius: '1rem', background: '#f8fafc', border: `1px solid ${border}` }}>
+                <div>
+                  <div style={{ fontSize: '0.8rem', color: textMut, textTransform: 'uppercase', fontWeight: 700, marginBottom: '0.25rem' }}>Người mượn</div>
+                  <div style={{ fontWeight: 800, color: textPrim }}>{selectedTicket.member_name} (@{selectedTicket.member_username})</div>
+                </div>
+                <div>
+                  <div style={{ fontSize: '0.8rem', color: textMut, textTransform: 'uppercase', fontWeight: 700, marginBottom: '0.25rem' }}>Thủ thư phụ trách</div>
+                  <div style={{ fontWeight: 800, color: textPrim }}>{selectedTicket.librarian_name || 'Hệ thống tự động / Chưa có'}</div>
+                </div>
+                <div>
+                  <div style={{ fontSize: '0.8rem', color: textMut, textTransform: 'uppercase', fontWeight: 700, marginBottom: '0.25rem' }}>Ngày mượn sách</div>
+                  <div style={{ fontWeight: 800, color: textPrim }}>{selectedTicket.borrow_date ? new Date(selectedTicket.borrow_date).toLocaleDateString('vi-VN') : '—'}</div>
+                </div>
+              </div>
+
+              <h4 style={{ fontSize: '1.05rem', fontWeight: 800, color: textPrim, marginBottom: '1rem', borderBottom: `2px solid ${border}`, paddingBottom: '0.5rem' }}>
+                Danh sách sách trong phiếu
+              </h4>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                {(selectedTicket.books || selectedTicket.details || []).map((b, idx) => {
+                  const bookDueDate = b.due_date ? new Date(b.due_date).toLocaleDateString('vi-VN') : '—';
+                  const bookRetDate = b.return_date ? new Date(b.return_date).toLocaleDateString('vi-VN') : null;
+                  const isBkReturned = b.is_returned || selectedTicket.status?.toLowerCase() === 'returned' || selectedTicket.status?.toLowerCase() === 'completed';
+                  return (
+                    <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1.25rem', borderRadius: '1rem', border: `1px solid ${isBkReturned ? '#d1fae5' : '#fee2e2'}`, background: isBkReturned ? '#f0fdf4' : '#fef2f2' }}>
+                      <div>
+                        <div style={{ fontWeight: 800, color: isBkReturned ? '#065f46' : '#b91c1c', fontSize: '0.95rem' }}>📖 {b.title || b.book_title || '—'}</div>
+                        <div style={{ fontSize: '0.8rem', color: isBkReturned ? '#047857' : '#7f1d1d', marginTop: '0.25rem' }}>
+                          Số lượng: <span style={{ fontWeight: 700 }}>{b.quantity || 1}</span>
+                        </div>
+                      </div>
+                      <div style={{ textAlign: 'right' }}>
+                        <div style={{ fontSize: '0.85rem', fontWeight: 700, color: textPrim }}>Hạn trả: {bookDueDate}</div>
+                        {isBkReturned ? (
+                          <div style={{ fontSize: '0.8rem', fontWeight: 800, color: '#059669', marginTop: '0.25rem' }}>
+                            ✓ Đã trả {bookRetDate ? `ngày ${bookRetDate}` : '(Hoàn thành)'}
+                          </div>
+                        ) : (
+                          <div style={{ fontSize: '0.8rem', fontWeight: 800, color: '#ef4444', marginTop: '0.25rem' }}>
+                            ⏱ Chưa trả
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div style={{ padding: '1.5rem 2.5rem 2rem', borderTop: `1px solid ${border}`, display: 'flex', justifyContent: 'flex-end', background: '#f8fafc' }}>
+              <button 
+                onClick={() => setSelectedTicket(null)}
+                style={{ background: accent, color: '#fff', border: 'none', padding: '0.75rem 2rem', borderRadius: '50px', fontSize: '0.9rem', fontWeight: 800, cursor: 'pointer', transition: 'all 0.2s', boxShadow: '0 4px 12px rgba(99,102,241,0.2)' }}
+                onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.03)'}
+                onMouseLeave={e => e.currentTarget.style.transform = ''}>
+                Đóng
+              </button>
+            </div>
+
+          </div>
+        </div>
       )}
 
       </div>

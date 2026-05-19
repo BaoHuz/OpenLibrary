@@ -343,6 +343,85 @@ const DetailPage = () => {
                 )}
               </div>
             </div>
+          ) : type === 'fines' ? (
+            <div style={{ display: 'grid', gridTemplateColumns: '260px 1fr', gap: '2rem' }}>
+              {/* Cột trái: Biểu tượng khoản phạt */}
+              <div style={{ background: 'var(--input-bg)', padding: '2rem', borderRadius: '1.5rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1.5rem', height: 'fit-content' }}>
+                <div style={{ width: '120px', height: '120px', borderRadius: '50%', background: 'linear-gradient(135deg, #ef4444, #f97316)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 8px 24px rgba(239,68,68,0.2)' }}>
+                  <span style={{ fontSize: '3.5rem', fontWeight: 800 }}>₫</span>
+                </div>
+                <div style={{ textAlign: 'center' }}>
+                  <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 800 }}>Phiếu Phạt</h3>
+                  <p style={{ margin: '0.5rem 0 0', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>ID: {id}</p>
+                </div>
+                <span className={`badge ${data.is_paid ? 'badge-success' : 'badge-danger'}`} style={{ fontSize: '1rem', padding: '0.6rem 1.2rem', width: '100%', textAlign: 'center' }}>
+                  {data.is_paid ? '● Đã thu tiền' : '● Chưa thu tiền'}
+                </span>
+              </div>
+
+              {/* Cột phải: Chi tiết */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                <div style={{ background: 'var(--input-bg)', padding: '2rem', borderRadius: '1.5rem' }}>
+                  <h3 style={{ fontSize: '1.1rem', fontWeight: 800, marginBottom: '1.5rem', color: 'var(--accent)', borderBottom: '2px solid var(--table-border)', paddingBottom: '0.5rem' }}>📝 CHI TIẾT KHOẢN PHẠT</h3>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1.5rem' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                      <label style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>Thành viên bị phạt</label>
+                      <p style={{ fontSize: '1.1rem', fontWeight: 700 }}>{data.user_name || `Mã TV: ${data.user}`}</p>
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                      <label style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>Số tiền phạt (VNĐ)</label>
+                      <p style={{ fontSize: '1.2rem', fontWeight: 800, color: 'red', margin: 0 }}>{Number(data.amount).toLocaleString('vi-VN')} đ</p>
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', gridColumn: '1 / -1' }}>
+                      <label style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>Lý do vi phạm</label>
+                      <p style={{ fontSize: '1.1rem', fontWeight: 600, margin: 0 }}>{data.reason || '—'}</p>
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                      <label style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>Thời điểm tạo</label>
+                      <p style={{ fontSize: '1.1rem', fontWeight: 600 }}>{data.created_at ? new Date(data.created_at).toLocaleString('vi-VN') : '—'}</p>
+                    </div>
+                  </div>
+                </div>
+
+                {data.ticket_books && data.ticket_books.length > 0 ? (
+                  <div style={{ background: 'var(--input-bg)', padding: '2rem', borderRadius: '1.5rem' }}>
+                    <h3 style={{ fontSize: '1.1rem', fontWeight: 800, marginBottom: '1.5rem', color: 'var(--accent)', borderBottom: '2px solid var(--table-border)', paddingBottom: '0.5rem' }}>📚 CHI TIẾT SÁCH QUÁ HẠN TRONG PHIẾU</h3>
+                    <div style={{ background: 'var(--card-bg)', borderRadius: '1rem', padding: '1rem', border: '1px solid var(--table-border)', overflowX: 'auto' }}>
+                      <table className="lms-table" style={{ margin: 0 }}>
+                        <thead>
+                          <tr>
+                            <th style={{ padding: '10px 16px' }}>Tên sách</th>
+                            <th style={{ padding: '10px 16px' }}>Mã sách</th>
+                            <th style={{ padding: '10px 16px' }}>Hạn trả dự kiến</th>
+                            <th style={{ padding: '10px 16px' }}>Tình trạng</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {data.ticket_books.map((book, idx) => (
+                            <tr key={idx}>
+                              <td style={{ fontWeight: 700, padding: '10px 16px' }}>{book.title}</td>
+                              <td style={{ fontFamily: 'monospace', padding: '10px 16px' }}>ID: {book.book_id}</td>
+                              <td style={{ padding: '10px 16px' }}>{book.due_date ? new Date(book.due_date).toLocaleDateString('vi-VN') : '—'}</td>
+                              <td style={{ padding: '10px 16px' }}>
+                                <span className={`badge ${book.is_returned ? 'badge-success' : 'badge-danger'}`} style={{ whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center' }}>
+                                  {book.is_returned ? '● Đã trả' : '● Chưa trả (Quá hạn)'}
+                                </span>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                ) : (
+                  <div style={{ background: 'var(--input-bg)', padding: '2rem', borderRadius: '1.5rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem', color: 'var(--text-secondary)', textAlign: 'center' }}>
+                    <span style={{ fontSize: '2rem' }}>ℹ️</span>
+                    <p style={{ margin: 0, fontSize: '0.95rem', fontWeight: 700 }}>Thông tin sách liên kết không có sẵn</p>
+                    <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)' }}>Khoản phạt này được thủ thư tạo thủ công hoặc không liên kết trực tiếp với một Phiếu mượn cụ thể trong cơ sở dữ liệu.</p>
+                  </div>
+                )}
+              </div>
+            </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                {/* Profile Header */}
