@@ -150,7 +150,7 @@
         "author": 2,
         "publisher": 11,
         "publication_year": 2019,
-        "stock": 4,
+        "stock": 2,
         "created_at": "2026-03-23T09:10:49.768",
         "image": "books_images/25315168bfdc48a695188e1bb57ce8a2.jpg"
     }
@@ -180,7 +180,7 @@
         "author": 4,
         "publisher": 1,
         "publication_year": 2015,
-        "stock": 15,
+        "stock": 13,
         "created_at": "2026-03-23T09:10:49.768",
         "image": "books_images/ef89df089fd446dbab9596f8ff62379a.jpg"
     }
@@ -195,7 +195,7 @@
         "author": 11,
         "publisher": 2,
         "publication_year": 2016,
-        "stock": 14,
+        "stock": 13,
         "created_at": "2026-03-23T09:10:49.768",
         "image": "books_images/ab5ed3a19c6e4c02aea46a811ebf19db.jpg"
     }
@@ -240,7 +240,7 @@
         "author": 9,
         "publisher": 15,
         "publication_year": 2017,
-        "stock": 12,
+        "stock": 11,
         "created_at": "2026-05-15T17:41:16.435",
         "image": "books_images/426c2ed114284dbf9c0beac3627c7609.jpg"
     }
@@ -255,7 +255,7 @@
         "author": 7,
         "publisher": 13,
         "publication_year": 2023,
-        "stock": 19,
+        "stock": 16,
         "created_at": "2026-05-15T17:41:16.435",
         "image": "books_images/cbbfede236b54cfa9298255d72d4c98d.jpg"
     }
@@ -606,6 +606,51 @@
     }
 },
 {
+    "model": "api.borrowticketdetails",
+    "pk": [
+        19,
+        2
+    ],
+    "fields": {
+        "ticket": 19,
+        "book": 2,
+        "due_date": "2026-06-03",
+        "return_date": null,
+        "is_returned": false,
+        "quantity": 1
+    }
+},
+{
+    "model": "api.borrowticketdetails",
+    "pk": [
+        20,
+        10
+    ],
+    "fields": {
+        "ticket": 20,
+        "book": 10,
+        "due_date": "2026-06-03",
+        "return_date": null,
+        "is_returned": false,
+        "quantity": 1
+    }
+},
+{
+    "model": "api.borrowticketdetails",
+    "pk": [
+        23,
+        9
+    ],
+    "fields": {
+        "ticket": 23,
+        "book": 9,
+        "due_date": "2026-06-04",
+        "return_date": null,
+        "is_returned": false,
+        "quantity": 1
+    }
+},
+{
     "model": "api.borrowtickets",
     "pk": 1,
     "fields": {
@@ -682,7 +727,7 @@
         "member": 1,
         "librarian": 1,
         "borrow_date": "2026-05-18",
-        "status": "Active"
+        "status": "Overdue"
     }
 },
 {
@@ -692,7 +737,7 @@
         "member": 1,
         "librarian": 1,
         "borrow_date": "2026-05-18",
-        "status": "Active"
+        "status": "Overdue"
     }
 },
 {
@@ -702,7 +747,7 @@
         "member": 12,
         "librarian": 1,
         "borrow_date": "2026-05-18",
-        "status": "Active"
+        "status": "Overdue"
     }
 },
 {
@@ -712,7 +757,7 @@
         "member": 1,
         "librarian": 1,
         "borrow_date": "2026-05-18",
-        "status": "Active"
+        "status": "Overdue"
     }
 },
 {
@@ -722,7 +767,7 @@
         "member": 1,
         "librarian": 1,
         "borrow_date": "2026-05-18",
-        "status": "Returned"
+        "status": "Overdue"
     }
 },
 {
@@ -730,9 +775,39 @@
     "pk": 18,
     "fields": {
         "member": 1,
-        "librarian": null,
+        "librarian": 1,
         "borrow_date": "2026-05-19",
-        "status": "Pending"
+        "status": "Overdue"
+    }
+},
+{
+    "model": "api.borrowtickets",
+    "pk": 19,
+    "fields": {
+        "member": 1,
+        "librarian": 1,
+        "borrow_date": "2026-05-20",
+        "status": "Overdue"
+    }
+},
+{
+    "model": "api.borrowtickets",
+    "pk": 20,
+    "fields": {
+        "member": 1,
+        "librarian": 1,
+        "borrow_date": "2026-05-20",
+        "status": "Overdue"
+    }
+},
+{
+    "model": "api.borrowtickets",
+    "pk": 23,
+    "fields": {
+        "member": 14,
+        "librarian": null,
+        "borrow_date": "2026-05-21",
+        "status": "Overdue"
     }
 },
 {
@@ -1069,6 +1144,19 @@
         "role": "Member",
         "is_active": true,
         "created_at": "2026-05-19T13:37:38.774"
+    }
+},
+{
+    "model": "api.users",
+    "pk": 14,
+    "fields": {
+        "username": "sinhvien123",
+        "password_hash": "pbkdf2_sha256$1200000$oSt5f4hsqf0UJ7rSI508JE$h9B2ziRN1MJXI70/oXl+kgeV5yzlcZQ3LjZRtH2KeI0=",
+        "full_name": "Nguyễn Văn A",
+        "email": null,
+        "role": "Member",
+        "is_active": true,
+        "created_at": "2026-05-21T01:35:12.148"
     }
 },
 {
@@ -1451,8 +1539,8 @@
     "fields": {
         "user": 5,
         "ticket": 5,
-        "amount": "115000.00",
-        "reason": "Trễ hạn trả sách 23 ngày (Phiếu #5)",
+        "amount": "200000.00",
+        "reason": "Trễ hạn trả sách 41 ngày (Phiếu #5)",
         "is_paid": false,
         "created_at": "2026-05-19T03:22:32.480Z"
     }
@@ -1488,7 +1576,7 @@
         "user": 3,
         "ticket": 1,
         "amount": "200000.00",
-        "reason": "Trễ hạn trả sách 44 ngày (Phiếu #1)",
+        "reason": "Trễ hạn trả sách 62 ngày (Phiếu #1)",
         "is_paid": false,
         "created_at": "2026-05-19T10:53:21.634Z"
     }
@@ -1499,8 +1587,8 @@
     "fields": {
         "user": 3,
         "ticket": 4,
-        "amount": "120000.00",
-        "reason": "Trễ hạn trả sách 24 ngày (Phiếu #4)",
+        "amount": "200000.00",
+        "reason": "Trễ hạn trả sách 42 ngày (Phiếu #4)",
         "is_paid": false,
         "created_at": "2026-05-19T10:53:21.651Z"
     }
@@ -1524,9 +1612,117 @@
         "user": 4,
         "ticket": 2,
         "amount": "200000.00",
-        "reason": "Trễ hạn trả sách 49 ngày (Phiếu #2)",
+        "reason": "Trễ hạn trả sách 67 ngày (Phiếu #2)",
         "is_paid": false,
         "created_at": "2026-05-19T10:53:21.683Z"
+    }
+},
+{
+    "model": "api.fines",
+    "pk": 13,
+    "fields": {
+        "user": 1,
+        "ticket": 14,
+        "amount": "30000.00",
+        "reason": "Trễ hạn trả sách 6 ngày (Phiếu #14)",
+        "is_paid": false,
+        "created_at": "2026-06-07T02:05:16.855Z"
+    }
+},
+{
+    "model": "api.fines",
+    "pk": 14,
+    "fields": {
+        "user": 12,
+        "ticket": 13,
+        "amount": "30000.00",
+        "reason": "Trễ hạn trả sách 6 ngày (Phiếu #13)",
+        "is_paid": false,
+        "created_at": "2026-06-07T02:05:16.882Z"
+    }
+},
+{
+    "model": "api.fines",
+    "pk": 15,
+    "fields": {
+        "user": 1,
+        "ticket": 19,
+        "amount": "20000.00",
+        "reason": "Trễ hạn trả sách 4 ngày (Phiếu #19)",
+        "is_paid": false,
+        "created_at": "2026-06-07T02:05:16.901Z"
+    }
+},
+{
+    "model": "api.fines",
+    "pk": 16,
+    "fields": {
+        "user": 14,
+        "ticket": 23,
+        "amount": "15000.00",
+        "reason": "Trễ hạn trả sách 3 ngày (Phiếu #23)",
+        "is_paid": false,
+        "created_at": "2026-06-07T02:05:16.911Z"
+    }
+},
+{
+    "model": "api.fines",
+    "pk": 17,
+    "fields": {
+        "user": 1,
+        "ticket": 12,
+        "amount": "30000.00",
+        "reason": "Trễ hạn trả sách 6 ngày (Phiếu #12)",
+        "is_paid": false,
+        "created_at": "2026-06-07T02:05:16.927Z"
+    }
+},
+{
+    "model": "api.fines",
+    "pk": 18,
+    "fields": {
+        "user": 1,
+        "ticket": 18,
+        "amount": "25000.00",
+        "reason": "Trễ hạn trả sách 5 ngày (Phiếu #18)",
+        "is_paid": false,
+        "created_at": "2026-06-07T02:05:16.935Z"
+    }
+},
+{
+    "model": "api.fines",
+    "pk": 19,
+    "fields": {
+        "user": 1,
+        "ticket": 20,
+        "amount": "20000.00",
+        "reason": "Trễ hạn trả sách 4 ngày (Phiếu #20)",
+        "is_paid": false,
+        "created_at": "2026-06-07T02:05:16.942Z"
+    }
+},
+{
+    "model": "api.fines",
+    "pk": 20,
+    "fields": {
+        "user": 1,
+        "ticket": 11,
+        "amount": "30000.00",
+        "reason": "Trễ hạn trả sách 6 ngày (Phiếu #11)",
+        "is_paid": false,
+        "created_at": "2026-06-07T02:05:16.951Z"
+    }
+},
+{
+    "model": "api.fines",
+    "pk": 21,
+    "fields": {
+        "user": 1,
+        "ticket": 15,
+        "amount": "30000.00",
+        "reason": "Trễ hạn trả sách 6 ngày (Phiếu #15)",
+        "is_paid": false,
+        "created_at": "2026-06-07T02:05:16.971Z"
     }
 },
 {

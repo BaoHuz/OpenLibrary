@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { motion } from 'framer-motion';
-import { Save, ArrowLeft, Loader2, PlusCircle, User, BookOpen, Tag, Building2, Star, AlertCircle, RefreshCw } from 'lucide-react';
+import { Save, ArrowLeft, Loader2, PlusCircle, User, BookOpen, Tag, Building2, Star, AlertCircle, RefreshCw, Clock, FileX, AlertTriangle, ShieldAlert } from 'lucide-react';
 import Select from 'react-select';
 import ReactQuill from 'react-quill-new';
 import 'react-quill-new/dist/quill.snow.css';
@@ -108,6 +108,23 @@ const AddPage = () => {
         }
       };
       fetchFinesExtra();
+    } else if (type === 'reviews') {
+      const fetchReviewsExtra = async () => {
+        try {
+          const [bRes, uRes] = await Promise.all([
+            axios.get('http://127.0.0.1:8000/api/books/'),
+            axios.get('http://127.0.0.1:8000/api/users/')
+          ]);
+          setExtraData(prev => ({
+            ...prev,
+            books: Array.isArray(bRes.data) ? bRes.data : [],
+            users: Array.isArray(uRes.data) ? uRes.data : []
+          }));
+        } catch (err) {
+          console.error('Error fetching reviews dropdown data:', err);
+        }
+      };
+      fetchReviewsExtra();
     }
   }, [type]);
 
@@ -168,11 +185,20 @@ const AddPage = () => {
         { value: false, label: 'Chưa thu' },
         { value: true, label: 'Đã thu' }
       ]},
-      { key: 'ticket', label: 'Phiếu mượn liên quan (sách mượn)', type: 'select', options: (extraData.tickets || []).map(t => ({ 
-        value: t.ticket_id, 
-        label: `#${t.ticket_id} - ${t.member_name || 'N/A'} → ${t.details && t.details.length > 0 ? t.details.map(d => d.book_title).join(', ') : 'Không có sách'}`
-      })) },
+      { key: 'ticket', label: 'Phiếu mượn liên quan (sách mượn)', type: 'select', options: (extraData.tickets || [])
+        .filter(t => !formData.user || t.member === formData.user)
+        .map(t => ({ 
+          value: t.ticket_id, 
+          label: `#${t.ticket_id} - ${t.member_name || 'N/A'} → ${t.details && t.details.length > 0 ? t.details.map(d => d.book_title).join(', ') : 'Không có sách'}`
+        })) 
+      },
       { key: 'reason', label: 'Lý do vi phạm', type: 'text', placeholder: 'Ví dụ: Làm hỏng sách, trả trễ hạn...', full: true }
+    ],
+    'reviews': [
+      { key: 'book', label: 'Sách cần đánh giá', type: 'select', options: (extraData.books || []).map(b => ({ value: b.book_id, label: b.title })) },
+      { key: 'user', label: 'Thành viên đánh giá', type: 'select', options: (extraData.users || []).map(u => ({ value: u.user_id, label: `${u.full_name} (@${u.username})` })) },
+      { key: 'rating', label: 'Điểm đánh giá (1-5)', type: 'number', placeholder: 'Nhập điểm từ 1 đến 5...' },
+      { key: 'comment', label: 'Nội dung nhận xét', type: 'textarea', placeholder: 'Nhập nội dung nhận xét...', full: true }
     ]
   };
 
@@ -189,7 +215,11 @@ const AddPage = () => {
     'username': 'Tên đăng nhập',
     'email': 'Địa chỉ Email',
     'password': 'Mật khẩu',
-    'full_name': 'Họ và tên'
+    'full_name': 'Họ và tên',
+    'book': 'Sách',
+    'user': 'Thành viên',
+    'rating': 'Điểm đánh giá',
+    'comment': 'Nội dung nhận xét'
   };
 
   const translateError = (key, msg) => {
@@ -217,6 +247,14 @@ const AddPage = () => {
       }
       if (formData.publication_year < 0) {
         newErrors.publication_year = 'Năm xuất bản không hợp lệ.';
+      }
+    } else if (type === 'reviews') {
+      if (!formData.book) newErrors.book = 'Vui lòng chọn sách.';
+      if (!formData.user) newErrors.user = 'Vui lòng chọn thành viên.';
+      if (!formData.rating && formData.rating !== 0) {
+        newErrors.rating = 'Vui lòng nhập điểm đánh giá.';
+      } else if (formData.rating < 1 || formData.rating > 5) {
+        newErrors.rating = 'Điểm đánh giá phải từ 1 đến 5.';
       }
     }
     
@@ -270,7 +308,66 @@ const AddPage = () => {
 
   const renderField = (field) => {
     const handleChange = (val) => {
-      setFormData(prev => ({ ...prev, [field.key]: val }));
+      if (type === 'fines') {
+        setFormData(prev => {
+          let updated = { ...prev, [field.key]: val };
+          
+          if (field.key === 'user') {
+            if (val) {
+              const currentTicket = (extraData.tickets || []).find(t => t.ticket_id === prev.ticket);
+              if (currentTicket && currentTicket.member !== val) {
+                updated.ticket = null;
+              }
+            } else {
+              updated.ticket = null;
+            }
+          }
+          
+          if (field.key === 'ticket') {
+            if (val) {
+              const selectedTicket = (extraData.tickets || []).find(t => t.ticket_id === val);
+              if (selectedTicket) {
+                updated.user = selectedTicket.member;
+                
+                const books = selectedTicket.details || [];
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                
+                let maxOverdueDays = 0;
+                let hasOverdue = false;
+                
+                books.forEach(book => {
+                  if (!book.is_returned && book.due_date) {
+                    const dueDate = new Date(book.due_date);
+                    dueDate.setHours(0, 0, 0, 0);
+                    if (dueDate < today) {
+                      hasOverdue = true;
+                      const diffTime = today - dueDate;
+                      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                      if (diffDays > maxOverdueDays) {
+                        maxOverdueDays = diffDays;
+                      }
+                    }
+                  }
+                });
+                
+                if (hasOverdue) {
+                  const suggestedAmount = Math.max(10000, Math.min(200000, maxOverdueDays * 5000));
+                  updated.amount = suggestedAmount;
+                  updated.reason = `Trễ hạn trả sách ${maxOverdueDays} ngày (Phiếu #${val})`;
+                } else {
+                  if (!updated.reason) {
+                    updated.reason = `Vi phạm khác (Phiếu #${val})`;
+                  }
+                }
+              }
+            }
+          }
+          return updated;
+        });
+      } else {
+        setFormData(prev => ({ ...prev, [field.key]: val }));
+      }
     };
 
     return (
@@ -356,6 +453,7 @@ const AddPage = () => {
       case 'categories': return <Tag size={24} />;
       case 'publishers': return <Building2 size={24} />;
       case 'fines': return <AlertCircle size={24} />;
+      case 'reviews': return <Star size={24} />;
       default: return <PlusCircle size={24} />;
     }
   };

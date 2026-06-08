@@ -365,6 +365,15 @@ const PublicPage = ({ user, onLogout }) => {
         book_id: book.book_id,
       });
       alert(`✅ ${res.data.message}\nMã phiếu: #${res.data.ticket_id}`);
+      
+      window.dispatchEvent(new Event('borrow-history-updated'));
+      window.dispatchEvent(new CustomEvent('new-notification', {
+        detail: {
+          title: 'Gửi yêu cầu mượn thành công',
+          content: `Yêu cầu mượn cuốn sách "${book.title}" đã được gửi và đang chờ phê duyệt.`,
+          type: 'success'
+        }
+      }));
     } catch (err) {
       alert(`❌ Lỗi: ${err.response?.data?.error || 'Không thể tạo yêu cầu mượn. Vui lòng thử lại.'}`);
     }

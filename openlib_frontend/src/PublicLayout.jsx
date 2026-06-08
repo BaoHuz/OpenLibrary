@@ -66,6 +66,20 @@ const PublicLayout = ({ user, onLogout }) => {
     return () => window.removeEventListener('new-notification', handleNewNotif);
   }, []);
 
+  const handleMarkAllAsRead = () => {
+    setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+  };
+
+  const handleMarkAsRead = (id) => {
+    setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
+  };
+
+  const handleClearAll = () => {
+    if (window.confirm("Bạn có chắc chắn muốn xóa tất cả thông báo không?")) {
+      setNotifications([]);
+    }
+  };
+
   const handleNavClick = (view) => {
     setCurrentView(view);
     setSearchTerm('');
@@ -289,16 +303,87 @@ const PublicLayout = ({ user, onLogout }) => {
                     <div style={{ position: 'absolute', top: '100%', right: 0, width: '320px', background: '#fff', boxShadow: '0 10px 25px rgba(0,0,0,0.15)', borderRadius: '1rem', marginTop: '1rem', zIndex: 1000, padding: '1rem', border: `1px solid ${border}` }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem', alignItems: 'center' }}>
                         <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 800 }}>Thông báo</h4>
-                        <span style={{ fontSize: '0.75rem', color: accent, cursor: 'pointer', fontWeight: 700 }}>Đánh dấu đã đọc</span>
+                        <div style={{ display: 'flex', gap: '0.8rem' }}>
+                          {notifications.length > 0 && (
+                            <>
+                              <span 
+                                onClick={handleMarkAllAsRead}
+                                style={{ fontSize: '0.75rem', color: accent, cursor: 'pointer', fontWeight: 700 }}
+                              >
+                                Đọc tất cả
+                              </span>
+                              <span 
+                                onClick={handleClearAll}
+                                style={{ fontSize: '0.75rem', color: '#ef4444', cursor: 'pointer', fontWeight: 700 }}
+                              >
+                                Xóa hết
+                              </span>
+                            </>
+                          )}
+                        </div>
                       </div>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', maxHeight: '300px', overflowY: 'auto' }}>
-                        {notifications.map(n => (
-                          <div key={n.id} style={{ padding: '0.8rem', borderRadius: '0.8rem', background: n.read ? 'transparent' : '#f8fafc', border: `1px solid ${n.read ? 'transparent' : border}`, cursor: 'pointer' }}>
-                            <div style={{ fontWeight: 800, fontSize: '0.85rem', marginBottom: '0.2rem', color: n.type === 'error' ? '#ef4444' : (n.type === 'warning' ? '#f59e0b' : textPrim) }}>{n.title}</div>
-                            <div style={{ fontSize: '0.8rem', color: textSec, lineHeight: 1.4 }}>{n.content}</div>
-                            <div style={{ fontSize: '0.7rem', color: textMut, marginTop: '0.4rem' }}>{n.time}</div>
+                        {notifications.length === 0 ? (
+                          <div style={{ textAlign: 'center', padding: '2rem 1rem', color: textMut, fontSize: '0.85rem' }}>
+                            <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>🔔</div>
+                            Bạn không có thông báo nào mới.
                           </div>
-                        ))}
+                        ) : (
+                          notifications.map(n => (
+                            <div 
+                              key={n.id} 
+                              onClick={() => handleMarkAsRead(n.id)}
+                              style={{ 
+                                padding: '0.8rem', 
+                                borderRadius: '0.8rem', 
+                                background: n.read ? 'transparent' : '#f1f5f9', 
+                                border: `1px solid ${n.read ? 'transparent' : '#cbd5e1'}`, 
+                                cursor: 'pointer',
+                                transition: 'all 0.2s',
+                                position: 'relative',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: '0.15rem'
+                              }}
+                              onMouseEnter={e => {
+                                e.currentTarget.style.transform = 'translateY(-1px)';
+                                e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.05)';
+                                if (n.read) {
+                                  e.currentTarget.style.background = '#f8fafc';
+                                }
+                              }}
+                              onMouseLeave={e => {
+                                e.currentTarget.style.transform = 'translateY(0)';
+                                e.currentTarget.style.boxShadow = 'none';
+                                e.currentTarget.style.background = n.read ? 'transparent' : '#f1f5f9';
+                              }}
+                            >
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', justifyContent: 'space-between' }}>
+                                <div style={{ 
+                                  fontWeight: 800, 
+                                  fontSize: '0.85rem', 
+                                  color: n.type === 'error' ? '#ef4444' : (n.type === 'warning' ? '#b45309' : textPrim),
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '0.35rem'
+                                }}>
+                                  {!n.read && (
+                                    <span style={{ 
+                                      display: 'inline-block', 
+                                      width: '6px', 
+                                      height: '6px', 
+                                      borderRadius: '50%', 
+                                      background: n.type === 'error' ? '#ef4444' : (n.type === 'warning' ? '#f59e0b' : accent) 
+                                    }} />
+                                  )}
+                                  {n.title}
+                                </div>
+                              </div>
+                              <div style={{ fontSize: '0.8rem', color: textSec, lineHeight: 1.4 }}>{n.content}</div>
+                              <div style={{ fontSize: '0.7rem', color: textMut, marginTop: '0.2rem' }}>{n.time}</div>
+                            </div>
+                          ))
+                        )}
                       </div>
                     </div>
                   )}
